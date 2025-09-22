@@ -1,0 +1,25 @@
+# OS/Editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Front (estático)
+tmp_xlsx/
+*.local.*
+
+# Node/Server
+server/node_modules/
+server/.env
+server/dev.db
+server/prisma/*.db
+server/prisma/*.sqlite
+server/prisma/*.sqlite3
+
+# Build/Dist (se houver)
+dist/
+build/
+
+# Backups/artefatos
+*.bak
+*.tmp
+*.swp

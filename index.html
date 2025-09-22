@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CIMA Investimentos - Sistema de Gestão</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">CIMA INVESTIMENTOS</div>
+      <div class="subtitle">Sistema Profissional de Gestão de Investimentos Esportivos</div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="auth-container">
+      <h2 class="auth-title">
+        <i class="fas fa-chart-line"></i>
+        Acesso ao Sistema
+      </h2>
+      <div class="input-group">
+        <label for="username">
+          <i class="fas fa-user"></i> Usuário
+        </label>
+        <input type="text" id="username" placeholder="Digite seu usuário ou email">
+      </div>
+      <div class="input-group">
+        <label for="password">
+          <i class="fas fa-lock"></i> Senha
+        </label>
+        <input type="password" id="password" placeholder="Digite sua senha">
+      </div>
+      <button class="btn" onclick="login()">
+        <i class="fas fa-sign-in-alt"></i> Entrar no Sistema
+      </button>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="admin-panel">
+      <div class="user-info">
+        <div>
+          <div class="user-name">
+            <i class="fas fa-user-shield"></i> Administrador
+          </div>
+          <div class="user-role">Painel de Controle Executivo</div>
+        </div>
+        <button class="btn btn-danger" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Sair
+        </button>
+      </div>
+
+      <div class="nav-tabs">
+        <div class="nav-tab active" onclick="showAdminTab('overview')">
+          <i class="fas fa-tachometer-alt"></i> Visão Geral
+        </div>
+        <div class="nav-tab" onclick="showAdminTab('clients')">
+          <i class="fas fa-users"></i> Clientes
+        </div>
+        <div class="nav-tab" onclick="showAdminTab('operations')">
+          <i class="fas fa-chart-bar"></i> Operações
+        </div>
+        <div class="nav-tab" onclick="showAdminTab('reports')">
+          <i class="fas fa-file-alt"></i> Relatórios
+        </div>
+        <div class="nav-tab" onclick="showAdminTab('audit')">
+          <i class="fas fa-shield-alt"></i> Auditoria
+        </div>
+        <div class="nav-tab" onclick="showAdminTab('import')">
+          <i class="fas fa-file-import"></i> Importação
+        </div>
+      </div>
+
+      <!-- Overview Tab -->
+      <div id="adminOverview" class="dashboard">
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-wallet"></i>
+            </div>
+            Resumo Financeiro
+          </h3>
+          <div class="metric">
+            <span class="metric-label">Capital Total Gerenciado</span>
+            <span class="metric-value" id="totalCapital">R$ 0,00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Lucro Total Hoje</span>
+            <span class="metric-value positive" id="todayProfit">R$ 0,00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Lucro Total Mês</span>
+            <span class="metric-value positive" id="monthProfit">R$ 0,00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Total de Clientes Ativos</span>
+            <span class="metric-value" id="totalClients">0</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-plus-circle"></i>
+            </div>
+            Nova Operação
+          </h3>
+          <div class="input-group">
+            <label>
+              <i class="fas fa-calendar"></i> Data da Operação
+            </label>
+            <input type="date" id="operationDate">
+          </div>
+          <div class="input-group">
+            <label>
+              <i class="fas fa-percentage"></i> Resultado (%)
+            </label>
+            <input type="number" step="0.01" id="operationResult" placeholder="Ex: 2.5 para +2.5% ou -1.2 para -1.2%">
+          </div>
+          <div class="input-group">
+            <label>
+              <i class="fas fa-file-alt"></i> Descrição da Operação
+            </label>
+            <input type="text" id="operationDesc" placeholder="Ex: Liverpool vs Arsenal - Under 2.5 Gols">
+          </div>
+          <button class="btn btn-success" onclick="addOperation()">
+            <i class="fas fa-save"></i> Registrar Operação
+          </button>
+        </div>
+
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            Performance dos Últimos 30 Dias
+          </h3>
+          <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clients Tab -->
+      <div id="adminClients" style="display: none;">
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-users-cog"></i>
+            </div>
+            Gestão de Clientes
+          </h3>
+          <button class="btn btn-gold" onclick="showModal('addClientModal')">
+            <i class="fas fa-user-plus"></i> Adicionar Novo Cliente
+          </button>
+          <table class="table" id="clientsTable">
+            <thead>
+              <tr>
+                <th><i class="fas fa-user"></i> Nome</th>
+                <th><i class="fas fa-envelope"></i> Email</th>
+                <th><i class="fas fa-money-bill"></i> Aporte Inicial</th>
+                <th><i class="fas fa-piggy-bank"></i> Saldo Atual</th>
+                <th><i class="fas fa-chart-line"></i> Rentabilidade</th>
+                <th><i class="fas fa-cogs"></i> Ações</th>
+              </tr>
+            </thead>
+            <tbody id="clientsTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Operations Tab -->
+      <div id="adminOperations" style="display: none;">
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-history"></i>
+            </div>
+            Histórico de Operações
+          </h3>
+          <table class="table" id="operationsTable">
+            <thead>
+              <tr>
+                <th><i class="fas fa-calendar"></i> Data</th>
+                <th><i class="fas fa-file-alt"></i> Descrição</th>
+                <th><i class="fas fa-percentage"></i> Resultado (%)</th>
+                <th><i class="fas fa-money-bill-wave"></i> Valor Impactado</th>
+                <th><i class="fas fa-tools"></i> Ações</th>
+              </tr>
+            </thead>
+            <tbody id="operationsTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reports Tab -->
+      <div id="adminReports" style="display: none;">
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-chart-pie"></i>
+            </div>
+            Relatórios Gerenciais
+          </h3>
+          <div class="input-group">
+            <label>
+              <i class="fas fa-calendar-alt"></i> Período (Mês/Ano)
+            </label>
+            <input type="month" id="reportMonth">
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+            <button class="btn btn-gold" onclick="generateReport()">
+              <i class="fas fa-file-alt"></i> Relatório HTML
+            </button>
+            <button class="btn btn-success" onclick="generateExecutiveReport()">
+              <i class="fas fa-file-pdf"></i> Relatório PDF Executivo
+            </button>
+            <button class="btn btn-primary" onclick="generateOperationsReport()">
+              <i class="fas fa-list"></i> Relatório PDF Operações
+            </button>
+            <button class="btn btn-warning" onclick="createBackup()">
+              <i class="fas fa-download"></i> Backup dos Dados
+            </button>
+          </div>
+          <div id="reportContent"></div>
+        </div>
+      </div>
+
+      <!-- Audit Tab -->
+      <div id="adminAudit" style="display: none;">
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+            Logs de Auditoria
+          </h3>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+            <button class="btn btn-primary" onclick="refreshAuditLogs()">
+              <i class="fas fa-sync-alt"></i> Atualizar Logs
+            </button>
+            <button class="btn btn-warning" onclick="exportAuditLogs()">
+              <i class="fas fa-download"></i> Exportar Logs
+            </button>
+            <button class="btn btn-danger" onclick="clearOldLogs()" style="margin-left: auto;">
+              <i class="fas fa-trash"></i> Limpar Logs Antigos
+            </button>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <select id="auditLogFilter" onchange="filterAuditLogs()" style="padding: 10px; border-radius: 8px; border: 2px solid #e9ecef;">
+              <option value="">Todos os Logs</option>
+              <option value="LOGIN">Logins</option>
+              <option value="CLIENT">Clientes</option>
+              <option value="OPERATION">Operações</option>
+              <option value="REPORT">Relatórios</option>
+              <option value="BACKUP">Backups</option>
+              <option value="ERROR">Erros</option>
+            </select>
+          </div>
+          <table class="table" id="auditLogsTable">
+            <thead>
+              <tr>
+                <th><i class="fas fa-clock"></i> Data/Hora</th>
+                <th><i class="fas fa-user"></i> Usuário</th>
+                <th><i class="fas fa-cog"></i> Ação</th>
+                <th><i class="fas fa-info-circle"></i> Detalhes</th>
+                <th><i class="fas fa-laptop"></i> IP/Navegador</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsTableBody">
+              <!-- Logs serão carregados via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-chart-pie"></i>
+            </div>
+            Estatísticas de Segurança
+          </h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="totalLogins">0</div>
+              <div class="stat-label">
+                <i class="fas fa-sign-in-alt"></i> Total de Logins
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="failedLogins">0</div>
+              <div class="stat-label">
+                <i class="fas fa-times-circle"></i> Logins Falhados
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="totalActions">0</div>
+              <div class="stat-label">
+                <i class="fas fa-tasks"></i> Ações Registradas
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="systemErrors">0</div>
+              <div class="stat-label">
+                <i class="fas fa-exclamation-triangle"></i> Erros do Sistema
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-tools"></i>
+            </div>
+            Ferramentas de Sistema
+          </h3>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-success" onclick="runSystemCheck()">
+              <i class="fas fa-stethoscope"></i> Verificação do Sistema
+            </button>
+            <button class="btn btn-info" onclick="showSystemInfo()">
+              <i class="fas fa-info"></i> Informações do Sistema
+            </button>
+            <button class="btn btn-warning" onclick="optimizeDatabase()">
+              <i class="fas fa-database"></i> Otimizar Dados
+            </button>
+          </div>
+          <div id="systemCheckResults" style="margin-top: 20px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Tab -->
+    <div id="adminImport" style="display: none;">
+      <div class="card">
+        <h3>
+          <div class="card-icon">
+            <i class="fas fa-file-import"></i>
+          </div>
+          Importação de Dados - Planilhas
+        </h3>
+
+        <div class="alert alert-info" style="margin-bottom: 20px;">
+          <i class="fas fa-info-circle"></i>
+          <strong>Como funciona:</strong> Importe seus 30 meses de dados históricos de planilhas CSV.
+          O sistema fará backup automático antes da importação.
+        </div>
+
+        <!-- Upload Area -->
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-content">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <h4>Arraste seu arquivo CSV aqui</h4>
+            <p>ou clique para selecionar</p>
+            <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display: none;">
+          </div>
+        </div>
+
+        <!-- Format Guide -->
+        <div class="card" style="margin-top: 20px; background: #f8f9fa;">
+          <h4><i class="fas fa-question-circle"></i> Formato Esperado do CSV:</h4>
+          <pre id="csvTemplate" style="background: white; padding: 15px; border-radius: 8px; overflow-x: auto;">Data,Descrição,Resultado,Capital Total
+15/03/2022,"Liverpool vs Arsenal - Over 2.5",2.8,70000
+14/03/2022,"Barcelona vs Real Madrid",3.2,68500
+13/03/2022,"Bayern vs Dortmund",-1.5,66000</pre>
+
+          <div style="margin-top: 15px;">
+            <button class="btn btn-secondary" onclick="downloadTemplate()">
+              <i class="fas fa-download"></i> Baixar Modelo CSV
+            </button>
+            <button class="btn btn-info" onclick="showMappingHelp()">
+              <i class="fas fa-question"></i> Ajuda de Mapeamento
+            </button>
+          </div>
+        </div>
+
+        <!-- Import Progress -->
+        <div id="importProgress" style="display: none; margin-top: 20px;">
+          <div class="card">
+            <h4><i class="fas fa-spinner fa-spin"></i> Importando Dados...</h4>
+            <div class="progress-bar">
+              <div id="progressBarFill" style="width: 0%;"></div>
+            </div>
+            <div id="importStatus">Iniciando importação...</div>
+          </div>
+        </div>
+
+        <!-- Import Results -->
+        <div id="importResults" style="display: none; margin-top: 20px;">
+          <div class="card">
+            <h4><i class="fas fa-check-circle"></i> Resultado da Importação</h4>
+            <div id="importSummary"></div>
+            <div style="margin-top: 15px;">
+              <button class="btn btn-primary" onclick="viewImportLog()">
+                <i class="fas fa-file-alt"></i> Ver Log Completo
+              </button>
+              <button class="btn btn-success" onclick="refreshDashboard()">
+                <i class="fas fa-sync"></i> Atualizar Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Field Mapping -->
+        <div id="fieldMapping" style="display: none; margin-top: 20px;">
+          <div class="card">
+            <h4><i class="fas fa-exchange-alt"></i> Mapeamento de Campos</h4>
+            <p>Configure como os campos da sua planilha serão importados:</p>
+
+            <div class="mapping-grid">
+              <div class="mapping-row">
+                <label><i class="fas fa-calendar"></i> Campo de Data:</label>
+                <select id="dateFieldMapping">
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+
+              <div class="mapping-row">
+                <label><i class="fas fa-edit"></i> Campo de Descrição:</label>
+                <select id="descriptionFieldMapping">
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+
+              <div class="mapping-row">
+                <label><i class="fas fa-percentage"></i> Campo de Resultado:</label>
+                <select id="resultFieldMapping">
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+
+              <div class="mapping-row">
+                <label><i class="fas fa-dollar-sign"></i> Campo de Capital:</label>
+                <select id="capitalFieldMapping">
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+              <button class="btn btn-primary" onclick="processImport()">
+                <i class="fas fa-play"></i> Iniciar Importação
+              </button>
+              <button class="btn btn-secondary" onclick="cancelImport()">
+                <i class="fas fa-times"></i> Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Client Dashboard -->
+    <div id="clientDashboard" class="client-panel">
+      <div class="user-info">
+        <div>
+          <div class="user-name" id="clientName">
+            <i class="fas fa-user-tie"></i> Cliente
+          </div>
+          <div class="user-role">Portal do Investidor</div>
+        </div>
+        <button class="btn btn-danger" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Sair
+        </button>
+      </div>
+
+      <div class="dashboard">
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-chart-pie"></i>
+            </div>
+            Meu Portfolio
+          </h3>
+          <div class="metric">
+            <span class="metric-label">
+              <i class="fas fa-hand-holding-usd"></i> Aporte Inicial
+            </span>
+            <span class="metric-value" id="clientInitialInvestment">R$ 0,00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">
+              <i class="fas fa-piggy-bank"></i> Saldo Atual
+            </span>
+            <span class="metric-value" id="clientCurrentBalance">R$ 0,00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">
+              <i class="fas fa-trophy"></i> Lucro Total
+            </span>
+            <span class="metric-value positive" id="clientTotalProfit">R$ 0,00</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">
+              <i class="fas fa-percent"></i> Rentabilidade
+            </span>
+            <span class="metric-value positive" id="clientProfitability">0%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-chart-area"></i>
+            </div>
+            Evolução do Investimento
+          </h3>
+          <div class="chart-container">
+            <canvas id="clientChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>
+            <div class="card-icon">
+              <i class="fas fa-list-alt"></i>
+            </div>
+            Últimas Operações
+          </h3>
+          <div style="margin-bottom: 15px;">
+            <button class="btn btn-success" onclick="generateClientReport(systemData.currentUser.id)" style="margin-right: 10px;">
+              <i class="fas fa-file-pdf"></i> Meu Relatório PDF
+            </button>
+            <button class="btn btn-gold" onclick="window.print()">
+              <i class="fas fa-print"></i> Imprimir Dashboard
+            </button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th><i class="fas fa-calendar"></i> Data</th>
+                <th><i class="fas fa-info-circle"></i> Descrição</th>
+                <th><i class="fas fa-chart-line"></i> Resultado</th>
+                <th><i class="fas fa-money-bill-alt"></i> Impacto no Saldo</th>
+              </tr>
+            </thead>
+            <tbody id="clientOperationsTable">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Client Modal -->
+  <div id="addClientModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('addClientModal')">&times;</span>
+      <h2 style="color: var(--primary-blue); margin-bottom: 30px; text-align: center;">
+        <i class="fas fa-user-plus"></i> Cadastrar Novo Cliente
+      </h2>
+      <div class="input-group">
+        <label>
+          <i class="fas fa-user"></i> Nome Completo
+        </label>
+        <input type="text" id="newClientName" placeholder="Nome completo do cliente">
+      </div>
+      <div class="input-group">
+        <label>
+          <i class="fas fa-envelope"></i> Email
+        </label>
+        <input type="email" id="newClientEmail" placeholder="email@exemplo.com">
+      </div>
+      <div class="input-group">
+        <label>
+          <i class="fas fa-money-bill"></i> Aporte Inicial (R$)
+        </label>
+        <input type="number" step="0.01" id="newClientInvestment" placeholder="Ex: 15000.00">
+      </div>
+      <div class="input-group">
+        <label>
+          <i class="fas fa-calendar-day"></i> Data de Entrada
+        </label>
+        <input type="date" id="newClientStartDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="input-group">
+        <label>
+          <i class="fas fa-key"></i> Senha de Acesso
+        </label>
+        <input type="password" id="newClientPassword" placeholder="Senha inicial do cliente">
+      </div>
+      <button class="btn btn-success" onclick="addClient()">
+        <i class="fas fa-save"></i> Cadastrar Cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript Files -->
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/client.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/pdf-reports.js"></script>
+  <script src="js/data-migrator.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/import.js"></script>
+  <script src="js/main.js"></script>
+</body>
+
+</html>
