@@ -1,0 +1,41 @@
+services:
+  # API Backend
+  - type: web
+    name: cima-investimentos-sistema-api
+    env: node
+    rootDir: server
+    plan: free
+    autoDeploy: true
+    region: oregon
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_PROVIDER
+        value: postgresql
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_lkYdsMSEf4Q0@ep-lively-thunder-adxn967e-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+      - key: JWT_SECRET
+        value: cima-investimentos-jwt-secret-key-2024-production-secure-random-key
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: CLIENT_ORIGIN
+        value: https://cima-investimentos-sistema.onrender.com
+      - key: RATE_LIMIT_MAX
+        value: "500"
+      - key: RATE_LIMIT_LOGIN_MAX
+        value: "20"
+
+  # Frontend Estático
+  - type: web
+    name: cima-investimentos-sistema
+    env: static
+    plan: free
+    autoDeploy: true
+    region: oregon
+    buildCommand: ""
+    staticPublishPath: ./
+    routes:
+      - type: redirect
+        source: /*
+        destination: /index.html
