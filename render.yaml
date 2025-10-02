@@ -32,7 +32,6 @@ services:
     env: static
     plan: free
     autoDeploy: true
-    region: oregon
     buildCommand: ""
     staticPublishPath: ./
     routes:
