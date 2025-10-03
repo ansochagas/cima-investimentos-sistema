@@ -2,20 +2,46 @@
 
 // Client Dashboard Functions
 function showClientDashboard(client) {
+  console.log("showClientDashboard called with:", client);
+
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("clientDashboard").style.display = "block";
+
+  // Verificar se o cliente tem dados válidos
+  if (!client) {
+    console.error("Cliente não fornecido para showClientDashboard");
+    showAlert("Erro: Dados do cliente não encontrados", "danger");
+    return;
+  }
+
+  if (!client.name) {
+    console.error("Cliente sem nome:", client);
+    showAlert("Erro: Nome do cliente não encontrado", "danger");
+    return;
+  }
 
   document.getElementById(
     "clientName"
   ).innerHTML = `<i class="fas fa-user-tie"></i> ${client.name}`;
-  document.getElementById("clientInitialInvestment").textContent =
-    formatCurrency(client.initialInvestment);
-  document.getElementById("clientCurrentBalance").textContent = formatCurrency(
-    client.currentBalance
-  );
 
-  const profit = client.currentBalance - client.initialInvestment;
-  const profitability = ((profit / client.initialInvestment) * 100).toFixed(2);
+  // Garantir que os valores sejam números válidos
+  const initialInvestment = parseFloat(client.initialInvestment) || 0;
+  const currentBalance = parseFloat(client.currentBalance) || initialInvestment;
+
+  console.log("Valores calculados:", { initialInvestment, currentBalance });
+
+  document.getElementById("clientInitialInvestment").textContent =
+    formatCurrency(initialInvestment);
+  document.getElementById("clientCurrentBalance").textContent =
+    formatCurrency(currentBalance);
+
+  const profit = currentBalance - initialInvestment;
+  const profitability =
+    initialInvestment > 0
+      ? ((profit / initialInvestment) * 100).toFixed(2)
+      : "0.00";
+
+  console.log("Lucro e rentabilidade:", { profit, profitability });
 
   document.getElementById("clientTotalProfit").textContent =
     formatCurrency(profit);
