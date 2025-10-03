@@ -1,30 +1,58 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
-import * as Sentry from '@sentry/node';
-import { router as authRouter } from './routes/auth.js';
-import { router as clientsRouter } from './routes/clients.js';
-import { router as operationsRouter } from './routes/operations.js';
-import { router as healthRouter } from './routes/health.js';
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import * as Sentry from "@sentry/node";
+import { router as authRouter } from "./routes/auth.js";
+import { router as clientsRouter } from "./routes/clients.js";
+import { router as operationsRouter } from "./routes/operations.js";
+import { router as healthRouter } from "./routes/health.js";
 
 const app = express();
 
 const PORT = process.env.PORT || 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
+
+// Configuração CORS flexível para múltiplos domínios
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permitir requests sem origin (como mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    // Lista de domínios permitidos
+    const allowedOrigins = [
+      "https://cima-frontend.onrender.com",
+      "https://cima-frontend-o7sn.onrender.com",
+      "http://localhost:3000",
+      "http://localhost:4000",
+      CLIENT_ORIGIN,
+    ].filter(Boolean);
+
+    // Verificar se o origin está na lista
+    if (allowedOrigins.includes(origin) || CLIENT_ORIGIN === "*") {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
 
 // Sentry (opcional via SENTRY_DSN)
 if (process.env.SENTRY_DSN) {
-  Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1) });
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1),
+  });
   app.use(Sentry.Handlers.requestHandler());
 }
 
 app.use(helmet());
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
-app.use(express.json({ limit: '2mb' }));
-app.use(morgan('tiny'));
+app.use(cors(corsOptions));
+app.use(express.json({ limit: "2mb" }));
+app.use(morgan("tiny"));
 
 // Rate limiters (mínimos seguros)
 const globalLimiter = rateLimit({
@@ -33,25 +61,27 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use('/api/', globalLimiter);
+app.use("/api/", globalLimiter);
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_LOGIN_MAX || 20),
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Muitas tentativas de login. Tente novamente mais tarde.' },
+  message: { error: "Muitas tentativas de login. Tente novamente mais tarde." },
 });
-app.use('/api/v1/auth/login', loginLimiter);
+app.use("/api/v1/auth/login", loginLimiter);
 
-app.use('/api/v1/health', healthRouter);
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/clients', clientsRouter);
-app.use('/api/v1/operations', operationsRouter);
+app.use("/api/v1/health", healthRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/clients", clientsRouter);
+app.use("/api/v1/operations", operationsRouter);
 
 app.use((err, req, res, next) => {
-  console.error('[API_ERROR]', err);
-  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
+  console.error("[API_ERROR]", err);
+  res
+    .status(err.status || 500)
+    .json({ error: err.message || "Internal Server Error" });
 });
 
 if (process.env.SENTRY_DSN) {
