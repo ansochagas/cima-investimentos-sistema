@@ -336,6 +336,67 @@ async function addClient() {
     }
   }
 
+  // Se autenticado como admin, tenta criar cliente na API
+  const hasToken = !!localStorage.getItem("cimaAccessToken");
+  if (hasToken && systemData.userType === "admin" && window.CIMA_API) {
+    try {
+      showLoading("Cadastrando cliente...");
+
+      const clientData = {
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password,
+        startDate:
+          startDateInput && /^\d{4}-\d{2}-\d{2}$/.test(startDateInput)
+            ? startDateInput
+            : new Date().toISOString().split("T")[0],
+        initialInvestment: investment,
+      };
+
+      const result = await window.CIMA_API.createClient(clientData);
+
+      // Clear form
+      document.getElementById("newClientName").value = "";
+      document.getElementById("newClientEmail").value = "";
+      document.getElementById("newClientInvestment").value = "";
+      document.getElementById("newClientPassword").value = "";
+      const sd = document.getElementById("newClientStartDate");
+      if (sd) sd.value = "";
+
+      // Atualiza tabelas com dados do servidor
+      updateClientsTable();
+      closeModal("addClientModal");
+      updateAdminOverview();
+
+      hideLoading();
+
+      // Popup de confirmação de sucesso
+      setTimeout(() => {
+        alert(
+          `✅ Cliente ${name} cadastrado com sucesso!\n\n📧 Email: ${email}\n💰 Aporte: ${formatCurrency(
+            investment
+          )}`
+        );
+      }, 100);
+
+      showAlert(`Cliente ${name} cadastrado com sucesso!`, "success");
+
+      // Log da ação
+      logAction("CLIENT_CREATED_API", {
+        name: name,
+        email: email,
+        initialInvestment: investment,
+      });
+
+      return;
+    } catch (apiError) {
+      console.warn("Falha ao criar cliente via API, tentando local:", apiError);
+      hideLoading();
+      // Continua para fallback local
+    }
+  }
+
+  // Fallback local (se API falhar ou não estiver disponível)
   try {
     showLoading("Cadastrando cliente...");
 
@@ -371,13 +432,45 @@ async function addClient() {
 
     systemData.clients.push(newClient);
 
+    // Clear form
+    document.getElementById("newClientName").value = "";
+    document.getElementById("newClientEmail").value = "";
+    document.getElementById("newClientInvestment").value = "";
+    document.getElementById("newClientPassword").value = "";
+    const sd = document.getElementById("newClientStartDate");
+    if (sd) sd.value = "";
+
+    updateClientsTable();
+    closeModal("addClientModal");
+    updateAdminOverview();
+    saveData();
+    hideLoading();
+
+    // Popup de confirmação de sucesso
+    setTimeout(() => {
+      alert(
+        `✅ Cliente ${name} cadastrado com sucesso!\n\n📧 Email: ${email}\n💰 Aporte: ${formatCurrency(
+          investment
+        )}`
+      );
+    }, 100);
+
+    showAlert(`Cliente ${name} cadastrado com sucesso!`, "success");
+
     // Log da ação
-    logAction("CLIENT_CREATED", {
+    logAction("CLIENT_CREATED_LOCAL", {
       clientId: newId,
       name: name,
       email: email,
       initialInvestment: investment,
     });
+
+    // Notifica sobre o novo cliente
+    showNotification(
+      "Novo Cliente Cadastrado",
+      `${name} foi cadastrado com aporte de ${formatCurrency(investment)}`,
+      "success"
+    );
   } catch (error) {
     hideLoading();
     showAlert("Erro ao cadastrar cliente. Tente novamente.", "danger");
@@ -385,31 +478,7 @@ async function addClient() {
       error: error.message,
       email: email,
     });
-    return;
   }
-
-  // Clear form
-  document.getElementById("newClientName").value = "";
-  document.getElementById("newClientEmail").value = "";
-  document.getElementById("newClientInvestment").value = "";
-  document.getElementById("newClientPassword").value = "";
-  const sd = document.getElementById("newClientStartDate");
-  if (sd) sd.value = "";
-
-  updateClientsTable();
-  closeModal("addClientModal");
-  updateAdminOverview();
-  saveData();
-  hideLoading();
-
-  showAlert(`Cliente ${name} cadastrado com sucesso!`, "success");
-
-  // Notifica sobre o novo cliente
-  showNotification(
-    "Novo Cliente Cadastrado",
-    `${name} foi cadastrado com aporte de ${formatCurrency(investment)}`,
-    "success"
-  );
 }
 
 // Table Updates
