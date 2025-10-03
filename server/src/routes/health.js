@@ -20,7 +20,7 @@ router.post("/seed", async (req, res) => {
       process.env.DATABASE_URL ? "Configurada" : "NÃO CONFIGURADA"
     );
 
-    const { stdout, stderr } = await execAsync("node seed.js");
+    const { stdout, stderr } = await execAsync("cd .. && node seed.js");
 
     console.log("✅ Seed executado com sucesso");
     console.log("📄 Output:", stdout);
