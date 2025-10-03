@@ -15,28 +15,15 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
 
-// Configuração CORS flexível para múltiplos domínios
+// Configuração CORS simplificada para debug
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Permitir requests sem origin (como mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-
-    // Lista de domínios permitidos
-    const allowedOrigins = [
-      "https://cima-frontend.onrender.com",
-      "https://cima-frontend-o7sn.onrender.com",
-      "http://localhost:3000",
-      "http://localhost:4000",
-      CLIENT_ORIGIN,
-    ].filter(Boolean);
-
-    // Verificar se o origin está na lista
-    if (allowedOrigins.includes(origin) || CLIENT_ORIGIN === "*") {
-      return callback(null, true);
-    }
-
-    return callback(new Error("Not allowed by CORS"));
-  },
+  origin: [
+    "https://cima-frontend.onrender.com",
+    "https://cima-frontend-o7sn.onrender.com",
+    "http://localhost:3000",
+    "http://localhost:4000",
+    CLIENT_ORIGIN,
+  ].filter(Boolean),
   credentials: true,
 };
 
