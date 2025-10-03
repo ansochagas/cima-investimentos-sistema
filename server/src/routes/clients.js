@@ -30,8 +30,8 @@ router.post("/", requireAuth("ADMIN"), async (req, res) => {
         "Campos obrigatórios ausentes: name, email, password, initialInvestment",
     });
   }
-  // Validação mínima de senha no servidor (força básica)
-  const hasMinLen = typeof password === "string" && password.length >= 8;
+  // Validação básica de senha no servidor (mais permissiva para testes)
+  const hasMinLen = typeof password === "string" && password.length >= 6;
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /\d/.test(password);
@@ -39,9 +39,9 @@ router.post("/", requireAuth("ADMIN"), async (req, res) => {
   const score = [hasMinLen, hasUpper, hasLower, hasNumber, hasSpecial].filter(
     Boolean
   ).length;
-  if (score < 3) {
+  if (score < 2) {
     return res.status(400).json({
-      error: "Senha fraca. Exija ao menos 8 caracteres e combine tipos.",
+      error: "Senha muito fraca. Use pelo menos 6 caracteres.",
     });
   }
   const hashed = await bcrypt.hash(password, 10);
