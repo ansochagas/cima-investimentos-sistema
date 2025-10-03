@@ -2,7 +2,7 @@
 
 // Função simples de alert se utils.js não carregou
 function showAlert(message, type) {
-  if (typeof window.showAlert === 'undefined') {
+  if (typeof window.showAlert === "undefined") {
     alert(message);
     console.log(`[${type.toUpperCase()}] ${message}`);
   } else {
@@ -17,50 +17,62 @@ async function login() {
 
   if (!username || !password) {
     showAlert("Por favor, preencha todos os campos!", "danger");
-    console.log('LOGIN_ATTEMPT_FAILED: empty fields');
+    console.log("LOGIN_ATTEMPT_FAILED: empty fields");
     return;
   }
 
-  console.log('Tentativa de login:', username);
+  console.log("Tentativa de login:", username);
 
   try {
     // Tentativa via API (migração gradual)
-    const looksLikeEmail = username.includes('@');
+    const looksLikeEmail = username.includes("@");
     if (looksLikeEmail && window.CIMA_API) {
       try {
         const user = await window.CIMA_API.login(username, password);
-        const role = (user.role || '').toLowerCase();
-        if (role === 'admin') {
-          systemData.currentUser = 'admin';
-          systemData.userType = 'admin';
-          localStorage.setItem('cimaActiveSession', JSON.stringify({ role: 'admin', email: user.email }));
+        const role = (user.role || "").toLowerCase();
+        if (role === "admin") {
+          systemData.currentUser = "admin";
+          systemData.userType = "admin";
+          localStorage.setItem(
+            "cimaActiveSession",
+            JSON.stringify({ role: "admin", email: user.email })
+          );
           showAdminDashboard();
-          showAlert('Login administrativo realizado com sucesso!', 'success');
-          console.log('ADMIN_LOGIN_SUCCESS_API');
+          showAlert("Login administrativo realizado com sucesso!", "success");
+          console.log("ADMIN_LOGIN_SUCCESS_API");
           saveData();
           return;
-        } else if (role === 'client') {
-  console.log('CLIENT_LOGIN_API_SUCCESS');
-  try {
-    const me = await window.CIMA_API.getMe();
-    const normalize = (v) => (typeof v === 'string' ? parseFloat(v) : v);
-    const meNorm = {
-      ...me,
-      initialInvestment: normalize(me.initialInvestment),
-      currentBalance: normalize(me.currentBalance),
-    };
-    systemData.currentUser = meNorm;
-    systemData.userType = 'client';
-    showClientDashboard(meNorm);
-    showAlert('Bem-vindo, ' + meNorm.name + '!', 'success');
-    saveData();
-    return;
-  } catch (e2) {
-    console.warn('Falha ao carregar perfil do cliente via API, tentando fallback local.', e2);
-  }
-}
+        } else if (role === "client") {
+          console.log("CLIENT_LOGIN_API_SUCCESS");
+          try {
+            const me = await window.CIMA_API.getMe();
+            const normalize = (v) =>
+              typeof v === "string" ? parseFloat(v) : v;
+            const meNorm = {
+              ...me,
+              initialInvestment: normalize(me.initialInvestment),
+              currentBalance: normalize(me.currentBalance),
+            };
+            systemData.currentUser = meNorm;
+            systemData.userType = "client";
+            showClientDashboard(meNorm);
+            showAlert("Bem-vindo, " + meNorm.name + "!", "success");
+            saveData();
+            return;
+          } catch (e2) {
+            console.warn(
+              "Falha ao carregar perfil do cliente via API, tentando fallback local.",
+              e2
+            );
+            // Continua para tentar login local
+          }
+        }
       } catch (e) {
-        console.warn('Falha no login via API, tentando fallback local:', e.message);
+        console.warn(
+          "Falha no login via API, tentando fallback local:",
+          e.message
+        );
+        // Continua para tentar login local
       }
     }
     // Admin login - aceita senhas antigas temporariamente
@@ -70,17 +82,17 @@ async function login() {
         systemData.userType = "admin";
         showAdminDashboard();
         showAlert("Login administrativo realizado com sucesso!", "success");
-        console.log('ADMIN_LOGIN_SUCCESS');
+        console.log("ADMIN_LOGIN_SUCCESS");
         saveData();
         return;
       } else {
         showAlert("Credenciais administrativas incorretas!", "danger");
-        console.log('ADMIN_LOGIN_FAILED');
+        console.log("ADMIN_LOGIN_FAILED");
         return;
       }
     } else {
       // Client login - busca por email
-      const client = systemData.clients.find(c => c.email === username);
+      const client = systemData.clients.find((c) => c.email === username);
 
       if (client) {
         // Para clientes existentes, aceita senhas simples temporariamente
@@ -89,30 +101,31 @@ async function login() {
           systemData.userType = "client";
           showClientDashboard(client);
           showAlert(`Bem-vindo, ${client.name}!`, "success");
-          console.log('CLIENT_LOGIN_SUCCESS:', client.name);
+          console.log("CLIENT_LOGIN_SUCCESS:", client.name);
           saveData();
           return;
         }
       }
 
       showAlert("Email ou senha incorretos!", "danger");
-      console.log('CLIENT_LOGIN_FAILED:', username);
+      console.log("CLIENT_LOGIN_FAILED:", username);
     }
   } catch (error) {
-    console.error('Erro no login:', error);
+    console.error("Erro no login:", error);
     showAlert("Erro no sistema de autenticação. Tente novamente.", "danger");
   }
 }
 
 function logout() {
-  const currentUserName = systemData.currentUser?.name || systemData.currentUser || 'Usuário';
+  const currentUserName =
+    systemData.currentUser?.name || systemData.currentUser || "Usuário";
 
   systemData.currentUser = null;
   systemData.userType = null;
 
   // Remove sessão ativa
-  localStorage.removeItem('cimaActiveSession');
-  localStorage.removeItem('cimaAccessToken');
+  localStorage.removeItem("cimaActiveSession");
+  localStorage.removeItem("cimaAccessToken");
 
   document.getElementById("loginScreen").style.display = "block";
   document.getElementById("adminDashboard").style.display = "none";
@@ -121,7 +134,7 @@ function logout() {
   document.getElementById("password").value = "";
 
   showAlert("Logout realizado com sucesso!", "success");
-  logAction('LOGOUT_SUCCESS', { user: currentUserName });
+  logAction("LOGOUT_SUCCESS", { user: currentUserName });
   saveData();
 }
 
@@ -130,17 +143,17 @@ async function verifyAdminPassword(password) {
   // Verifica se existe senha admin hasheada
   if (!systemData.adminPassword) {
     // Primeira vez - define senha padrão forte
-    systemData.adminPassword = await hashPassword('CimaInvest2024!');
+    systemData.adminPassword = await hashPassword("CimaInvest2024!");
     saveData();
     // Para migração, aceita senhas antigas temporariamente
-    return password === 'admin123' || password === 'CimaInvest2024!';
+    return password === "admin123" || password === "CimaInvest2024!";
   }
 
   return await verifyPassword(password, systemData.adminPassword);
 }
 
 async function findClientByCredentials(email, password) {
-  const client = systemData.clients.find(c => c.email === email);
+  const client = systemData.clients.find((c) => c.email === email);
 
   if (!client) return null;
 
@@ -153,28 +166,30 @@ async function findClientByCredentials(email, password) {
 function generateSecureToken() {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  );
 }
 
 function createSecureSession(user, userType) {
   const session = {
     token: generateSecureToken(),
-    userId: userType === 'client' ? user.id : null,
+    userId: userType === "client" ? user.id : null,
     userType: userType,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 horas
-    ipAddress: 'localhost', // Em produção capturar IP real
-    userAgent: navigator.userAgent.substring(0, 200)
+    ipAddress: "localhost", // Em produção capturar IP real
+    userAgent: navigator.userAgent.substring(0, 200),
   };
 
-  localStorage.setItem('cimaSecureSession', JSON.stringify(session));
-  logAction('SESSION_CREATED', { userType, expiresAt: session.expiresAt });
+  localStorage.setItem("cimaSecureSession", JSON.stringify(session));
+  logAction("SESSION_CREATED", { userType, expiresAt: session.expiresAt });
 
   return session;
 }
 
 function validateSession() {
-  const sessionData = localStorage.getItem('cimaSecureSession');
+  const sessionData = localStorage.getItem("cimaSecureSession");
 
   if (!sessionData) return null;
 
@@ -184,22 +199,24 @@ function validateSession() {
     const expiresAt = new Date(session.expiresAt);
 
     if (now >= expiresAt) {
-      localStorage.removeItem('cimaSecureSession');
-      logAction('SESSION_EXPIRED', { expiredAt: session.expiresAt });
+      localStorage.removeItem("cimaSecureSession");
+      logAction("SESSION_EXPIRED", { expiredAt: session.expiresAt });
       return null;
     }
 
     // Renova sessão se está próxima do vencimento (menos de 1 hora)
     if (expiresAt.getTime() - now.getTime() < 60 * 60 * 1000) {
-      session.expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
-      localStorage.setItem('cimaSecureSession', JSON.stringify(session));
-      logAction('SESSION_RENEWED', { newExpiresAt: session.expiresAt });
+      session.expiresAt = new Date(
+        Date.now() + 8 * 60 * 60 * 1000
+      ).toISOString();
+      localStorage.setItem("cimaSecureSession", JSON.stringify(session));
+      logAction("SESSION_RENEWED", { newExpiresAt: session.expiresAt });
     }
 
     return session;
   } catch (error) {
-    localStorage.removeItem('cimaSecureSession');
-    logAction('SESSION_VALIDATION_ERROR', { error: error.message });
+    localStorage.removeItem("cimaSecureSession");
+    logAction("SESSION_VALIDATION_ERROR", { error: error.message });
     return null;
   }
 }
@@ -224,9 +241,14 @@ function checkLoginAttempts(identifier) {
   }
 
   if (attempts.count >= maxAttempts) {
-    const remainingTime = Math.ceil((lockoutTime - (now - attempts.lastAttempt)) / 1000 / 60);
-    showAlert(`Muitas tentativas de login. Tente novamente em ${remainingTime} minutos.`, 'danger');
-    logAction('LOGIN_BLOCKED', { identifier, attempts: attempts.count });
+    const remainingTime = Math.ceil(
+      (lockoutTime - (now - attempts.lastAttempt)) / 1000 / 60
+    );
+    showAlert(
+      `Muitas tentativas de login. Tente novamente em ${remainingTime} minutos.`,
+      "danger"
+    );
+    logAction("LOGIN_BLOCKED", { identifier, attempts: attempts.count });
     return false;
   }
 
@@ -250,7 +272,7 @@ function recordLoginAttempt(identifier, success) {
   }
 
   // Limpa tentativas antigas (mais de 1 hora)
-  Object.keys(loginAttempts).forEach(key => {
+  Object.keys(loginAttempts).forEach((key) => {
     if (now - loginAttempts[key].lastAttempt > 60 * 60 * 1000) {
       delete loginAttempts[key];
     }
@@ -270,86 +292,104 @@ function validatePasswordStrength(password) {
     hasUpperCase,
     hasLowerCase,
     hasNumbers,
-    hasSpecialChar
+    hasSpecialChar,
   ].filter(Boolean).length;
 
   return {
     score,
     isValid: score >= 3,
-    feedback: getPasswordFeedback(password.length, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar)
+    feedback: getPasswordFeedback(
+      password.length,
+      hasUpperCase,
+      hasLowerCase,
+      hasNumbers,
+      hasSpecialChar
+    ),
   };
 }
 
-function getPasswordFeedback(length, hasUpper, hasLower, hasNumbers, hasSpecial) {
+function getPasswordFeedback(
+  length,
+  hasUpper,
+  hasLower,
+  hasNumbers,
+  hasSpecial
+) {
   const issues = [];
 
-  if (length < 8) issues.push('pelo menos 8 caracteres');
-  if (!hasUpper) issues.push('uma letra maiúscula');
-  if (!hasLower) issues.push('uma letra minúscula');
-  if (!hasNumbers) issues.push('um número');
-  if (!hasSpecial) issues.push('um caractere especial');
+  if (length < 8) issues.push("pelo menos 8 caracteres");
+  if (!hasUpper) issues.push("uma letra maiúscula");
+  if (!hasLower) issues.push("uma letra minúscula");
+  if (!hasNumbers) issues.push("um número");
+  if (!hasSpecial) issues.push("um caractere especial");
 
   return issues.length > 0
-    ? `Senha deve conter: ${issues.join(', ')}`
-    : 'Senha forte';
+    ? `Senha deve conter: ${issues.join(", ")}`
+    : "Senha forte";
 }
 
 // ==================== MUDANÇA DE SENHA ====================
 async function changePassword(currentPassword, newPassword, confirmPassword) {
   if (!currentPassword || !newPassword || !confirmPassword) {
-    showAlert('Preencha todos os campos de senha!', 'danger');
+    showAlert("Preencha todos os campos de senha!", "danger");
     return false;
   }
 
   if (newPassword !== confirmPassword) {
-    showAlert('Nova senha e confirmação não conferem!', 'danger');
+    showAlert("Nova senha e confirmação não conferem!", "danger");
     return false;
   }
 
   const strengthCheck = validatePasswordStrength(newPassword);
   if (!strengthCheck.isValid) {
-    showAlert(strengthCheck.feedback, 'warning');
+    showAlert(strengthCheck.feedback, "warning");
     return false;
   }
 
   try {
-    showLoading('Alterando senha...');
+    showLoading("Alterando senha...");
 
-    if (systemData.userType === 'admin') {
+    if (systemData.userType === "admin") {
       const isCurrentValid = await verifyAdminPassword(currentPassword);
       if (!isCurrentValid) {
-        showAlert('Senha atual incorreta!', 'danger');
+        showAlert("Senha atual incorreta!", "danger");
         return false;
       }
 
       systemData.adminPassword = await hashPassword(newPassword);
-      logAction('ADMIN_PASSWORD_CHANGED');
-
-    } else if (systemData.userType === 'client' && systemData.currentUser) {
-      const isCurrentValid = await verifyPassword(currentPassword, systemData.currentUser.password);
+      logAction("ADMIN_PASSWORD_CHANGED");
+    } else if (systemData.userType === "client" && systemData.currentUser) {
+      const isCurrentValid = await verifyPassword(
+        currentPassword,
+        systemData.currentUser.password
+      );
       if (!isCurrentValid) {
-        showAlert('Senha atual incorreta!', 'danger');
+        showAlert("Senha atual incorreta!", "danger");
         return false;
       }
 
       systemData.currentUser.password = await hashPassword(newPassword);
 
       // Atualiza no array de clientes
-      const clientIndex = systemData.clients.findIndex(c => c.id === systemData.currentUser.id);
+      const clientIndex = systemData.clients.findIndex(
+        (c) => c.id === systemData.currentUser.id
+      );
       if (clientIndex !== -1) {
-        systemData.clients[clientIndex].password = systemData.currentUser.password;
+        systemData.clients[clientIndex].password =
+          systemData.currentUser.password;
       }
 
-      logAction('CLIENT_PASSWORD_CHANGED', { clientId: systemData.currentUser.id });
+      logAction("CLIENT_PASSWORD_CHANGED", {
+        clientId: systemData.currentUser.id,
+      });
     }
 
     saveData();
-    showAlert('Senha alterada com sucesso!', 'success');
+    showAlert("Senha alterada com sucesso!", "success");
     return true;
-
   } catch (error) {
-    showAlert('Erro ao alterar senha. Tente novamente.', 'danger');
-    logAction('PASSWORD_CHANGE_ERROR', { error: error.message });
+    showAlert("Erro ao alterar senha. Tente novamente.", "danger");
+    logAction("PASSWORD_CHANGE_ERROR", { error: error.message });
     return false;
   } finally {
     hideLoading();
@@ -370,4 +410,3 @@ function initializeAuth() {
   // Solicita permissão para notificações
   requestNotificationPermission();
 }
-
