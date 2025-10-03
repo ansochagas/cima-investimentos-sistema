@@ -20,7 +20,38 @@ router.post("/seed", async (req, res) => {
       process.env.DATABASE_URL ? "Configurada" : "NÃO CONFIGURADA"
     );
 
-    const { stdout, stderr } = await execAsync("cd .. && node seed.js");
+    // Primeiro listar diretórios para debug
+    console.log("📂 Listando diretórios:");
+    try {
+      const { stdout: lsOut } = await execAsync("ls -la");
+      console.log("Conteúdo do diretório atual:", lsOut);
+    } catch (e) {
+      console.log("Erro ao listar:", e.message);
+    }
+
+    // Tentar caminhos diferentes
+    let seedCommand = "node seed.js"; // tentar primeiro no diretório atual
+    try {
+      await execAsync("ls seed.js");
+      console.log("✅ seed.js encontrado no diretório atual");
+    } catch (e) {
+      console.log(
+        "❌ seed.js não encontrado no diretório atual, tentando ../seed.js"
+      );
+      seedCommand = "node ../seed.js";
+      try {
+        await execAsync("ls ../seed.js");
+        console.log("✅ seed.js encontrado em ../seed.js");
+      } catch (e2) {
+        console.log(
+          "❌ seed.js não encontrado em ../seed.js, tentando ../../seed.js"
+        );
+        seedCommand = "node ../../seed.js";
+      }
+    }
+
+    console.log("🔄 Executando comando:", seedCommand);
+    const { stdout, stderr } = await execAsync(seedCommand);
 
     console.log("✅ Seed executado com sucesso");
     console.log("📄 Output:", stdout);
