@@ -71,6 +71,12 @@ Para deploy automatizado em hospedagem, prefira:
 npm run prisma:deploy:smart
 ```
 
+O `npm start` ja executa:
+
+1. `prisma:deploy:smart`
+2. `ledger:rebuild`
+3. subida da API
+
 ## Rotas principais
 
 - `POST /api/v1/auth/login`

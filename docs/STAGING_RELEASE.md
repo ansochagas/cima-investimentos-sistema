@@ -38,6 +38,10 @@ Garantir que staging use o novo modelo de carteira coletiva com ledger auditavel
     Para testar localmente contra a API de staging/local:
     `http://127.0.0.1:8095/index.html?apiBase=http://127.0.0.1:4090/api/v1`
 
+Observacao:
+
+- Em deploy normal, `npm start` ja executa migrations inteligentes e `ledger:rebuild` antes de subir a API.
+
 ## Validacao manual minima
 
 ### Admin

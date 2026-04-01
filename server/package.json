@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "npm run prisma:deploy:smart && node src/index.js",
+    "start": "npm run prisma:deploy:smart && npm run ledger:rebuild && node src/index.js",
     "seed": "node seed.js",
     "ledger:rebuild": "node rebuild-ledger.js",
     "smoke:api": "node smoke-api.js",

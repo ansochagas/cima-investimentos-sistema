@@ -8,7 +8,7 @@ services:
     autoDeploy: true
     region: oregon
     buildCommand: npm install && npm run prisma:generate
-    preDeployCommand: npm run prisma:deploy:smart
+    preDeployCommand: npm run prisma:deploy:smart && npm run ledger:rebuild
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
