@@ -7,20 +7,25 @@ services:
     plan: free
     autoDeploy: true
     region: oregon
-    buildCommand: npm install && npx prisma generate
+    buildCommand: npm install && npm run prisma:generate
+    preDeployCommand: npm run prisma:deploy:smart
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_PROVIDER
         value: postgresql
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_lkYdsMSEf4Q0@ep-lively-thunder-adxn967e-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+        sync: false
       - key: JWT_SECRET
-        value: cima-investimentos-jwt-secret-key-2024-production-secure-random-key
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
       - key: JWT_EXPIRES_IN
         value: 15m
+      - key: REFRESH_EXPIRES_IN
+        value: 30d
       - key: CLIENT_ORIGIN
-        value: https://cima-investimentos-sistema.onrender.com
+        value: https://cima-investimentos-sistema.onrender.com,https://cima-frontend-o7sn.onrender.com
       - key: RATE_LIMIT_MAX
         value: "500"
       - key: RATE_LIMIT_LOGIN_MAX

@@ -1,80 +1,104 @@
-# CIMA Backend (v1.1)
+﻿# CIMA Backend
 
-Objetivo: disponibilizar o sistema online com autenticação segura, dados persistidos em banco, cálculo preciso e áreas logadas para admin e clientes.
+Backend da carteira coletiva do projeto CIMA.
+
+## Modelo oficial
+
+- Cada operacao representa uma aposta coletiva.
+- Todos os clientes elegiveis participam proporcionalmente ao saldo que tinham na data da entrada.
+- O admin informa evento, mercado, odd, percentual da banca e resultado.
+- O backend calcula stake, P&L, saldo e guarda o ledger por cliente.
 
 ## Stack
 
 - Node.js 18+
 - Express
 - Prisma ORM
-- Banco: PostgreSQL (produção) / SQLite (dev local rápido)
-- JWT (access + refresh), bcrypt
-- CORS, Helmet, Rate limiting
+- PostgreSQL em staging/producao
+- JWT + bcrypt
 
-## Como rodar (dev, SQLite)
+## Variaveis de ambiente
 
-1. Copie `.env.example` para `.env` e ajuste se necessário.
-2. Instale dependências:
-   - `npm install`
-3. Gere Prisma e migre:
-   - `npx prisma generate`
-   - `npx prisma migrate dev --name init`
-4. Inicie API:
-   - `npm run dev`
-5. API em: `http://localhost:4000/api/v1`
+Use `.env.example` para dev local e `.env.staging.example` como referencia de staging.
 
-## Como rodar (prod, Postgres)
+Campos mais importantes:
 
-1. Provisione um Postgres (Neon/Render/Railway/RDS) e preencha as variáveis em `.env`:
-   - `DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DB?connection_limit=5"`
-2. Rode migrações: `npx prisma migrate deploy`
-3. Start: `npm run start`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_REFRESH_SECRET`
+- `CLIENT_ORIGIN`
+- `RATE_LIMIT_MAX`
+- `RATE_LIMIT_LOGIN_MAX`
 
-## Rotas (resumo)
+`CLIENT_ORIGIN` aceita lista separada por virgula para fases de corte entre frontend antigo e novo.
 
-- `POST /api/v1/auth/login` — admin/cliente; retorna tokens
-- `POST /api/v1/auth/refresh` — renova access token
-- `POST /api/v1/auth/logout` — invalida sessão
-- `GET /api/v1/health` — status
-- `GET /api/v1/clients` — [admin] lista clientes
-- `POST /api/v1/clients` — [admin] cria cliente (inclui `startDate`)
-- `GET /api/v1/clients/:id` — [admin|self]
-- `GET /api/v1/operations` — [admin] lista operações
-- `POST /api/v1/operations` — [admin] cria operação diária (resultado %)
-- `POST /api/v1/import` — [admin] importa CSV/XLSX (server-side)
+## Scripts
 
-> Notas: Implementação inicial contém stubs para importação; ajuste fino virá em iterações seguintes.
+- `npm run dev` - sobe a API local
+- `npm run start` - sobe a API em modo normal
+- `npm run seed` - popula dados basicos e reconstrui o ledger
+- `npm run ledger:rebuild` - recalcula saldo e recria `OperationAllocation`
+- `npm run smoke:api` - valida health, auth, clients, operations e area do cliente
+- `npm run prisma:generate` - gera Prisma Client
+- `npm run prisma:baseline:initial` - marca a migration inicial como aplicada em banco legado
+- `npm run prisma:deploy:smart` - detecta banco legado, aplica baseline se necessario e roda deploy
+- `npm run prisma:deploy` - aplica migrations pendentes
 
-## Segurança
+## Migrations obrigatorias atuais
 
-- JWT assinado (HS256), refresh tokens persistidos
-- Hash de senhas com bcrypt
-- Helmet + Rate limiting em rotas sensíveis
-- CORS estrito
+Aplicar em ordem:
 
-## Cálculo
+1. `20260331_initial_schema`
+2. `20260401_collective_wallet`
+3. `20260401_operation_allocations`
 
-- Operações diárias em % aplicadas sobre a carteira elegível à data
-- Para cliente, saldo evolui desde `startDate`
-- Campos monetários como Decimal em banco; arredondamento controlado no servidor
+Depois das migrations, rodar:
 
-## Integração com o Front
+```bash
+npm run ledger:rebuild
+```
 
-- `js/api.js` centraliza chamadas. O front atual ainda usa localStorage; a migração para API será feita por etapas, trocando leituras/gravações para chamadas HTTP.
+Se a base ja existia antes das migrations versionadas, faca o baseline da inicial antes do deploy:
 
+```bash
+npm run prisma:baseline:initial
+npm run prisma:deploy
+```
 
-## Atualiza��es recentes
+Para deploy automatizado em hospedagem, prefira:
 
-- Novas rotas para o cliente autenticado:
-  - GET /api/v1/clients/me � dados do cliente com saldo recalculado
-  - GET /api/v1/clients/me/summary?last=10 � resumo com �ltimas opera��es e impacto
-- GET /api/v1/clients (admin) passa a retornar tamb�m `currentBalanceComputed` (saldo recalculado no servidor).
-- Seguran�a m�nima adicionada:
-  - Rate limiting global e em /auth/login (configur�vel por env)
-  - Integra��o opcional com Sentry via SENTRY_DSN
-  - Valida��o de for�a de senha no servidor ao criar cliente
+```bash
+npm run prisma:deploy:smart
+```
 
-### Vari�veis de ambiente �teis
-- CLIENT_ORIGIN
-- SENTRY_DSN (opcional), SENTRY_TRACES_SAMPLE_RATE
-- RATE_LIMIT_MAX, RATE_LIMIT_LOGIN_MAX
+## Rotas principais
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/verify`
+- `GET /api/v1/health`
+- `GET /api/v1/clients`
+- `POST /api/v1/clients`
+- `GET /api/v1/clients/me`
+- `GET /api/v1/clients/me/summary?last=5`
+- `GET /api/v1/operations`
+- `POST /api/v1/operations`
+- `PATCH /api/v1/operations/:id/settle`
+- `GET /api/v1/operations/:id/allocations`
+
+## Fluxo seguro para staging
+
+1. Provisione um Postgres isolado.
+2. Configure as variaveis de ambiente do servico.
+3. Se o banco ja existia, rode `npm run prisma:baseline:initial`.
+4. Rode `npm run prisma:deploy`.
+5. Rode `npm run ledger:rebuild`.
+6. Rode `npm run smoke:api` com as variaveis `SMOKE_*` preenchidas.
+7. Valide o front com login admin e cliente.
+
+## Estado atual
+
+- O backend ja suporta carteira coletiva.
+- O ledger por cliente ja esta modelado e persistido.
+- O deploy real ainda depende de aplicar as migrations em banco alinhado.

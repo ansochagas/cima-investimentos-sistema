@@ -1,4 +1,4 @@
-import "dotenv/config";
+﻿import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -13,21 +13,38 @@ import { router as healthRouter } from "./routes/health.js";
 const app = express();
 
 const PORT = process.env.PORT || 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
 
-// Configuração CORS simplificada para debug
-const corsOptions = {
-  origin: [
+function splitOrigins(rawValue) {
+  return String(rawValue || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = Array.from(
+  new Set([
     "https://cima-frontend.onrender.com",
     "https://cima-frontend-o7sn.onrender.com",
+    "https://cima-investimentos-sistema.onrender.com",
     "http://localhost:3000",
     "http://localhost:4000",
-    CLIENT_ORIGIN,
-  ].filter(Boolean),
+    "http://localhost:8095",
+    "http://127.0.0.1:8095",
+    ...splitOrigins(process.env.CLIENT_ORIGIN),
+  ])
+);
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin nao permitido: ${origin}`));
+  },
   credentials: true,
 };
 
-// Sentry (opcional via SENTRY_DSN)
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
@@ -41,7 +58,6 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan("tiny"));
 
-// Rate limiters (mínimos seguros)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX || 500),

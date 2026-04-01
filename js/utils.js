@@ -79,6 +79,111 @@ function validateInvestmentAmount(amount) {
     return !isNaN(numAmount) && numAmount >= 1000 && numAmount <= 10000000;
 }
 
+function toOperationNumber(value, fallback = 0) {
+    const numeric = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function normalizeOperationOutcome(outcome) {
+    const normalized = String(outcome || '').trim().toUpperCase();
+    return ['OPEN', 'WON', 'LOST', 'VOID'].includes(normalized) ? normalized : null;
+}
+
+function isCollectiveOperationRecord(operation) {
+    if (!operation || typeof operation !== 'object') return false;
+
+    return (
+        operation.stakePct !== undefined && operation.stakePct !== null ||
+        operation.odds !== undefined && operation.odds !== null ||
+        !!operation.eventName ||
+        !!operation.market ||
+        !!normalizeOperationOutcome(operation.outcome)
+    );
+}
+
+function isOperationSettled(operation) {
+    const outcome = normalizeOperationOutcome(operation && operation.outcome);
+    return !outcome || outcome !== 'OPEN';
+}
+
+function getOperationDisplayDescription(operation) {
+    if (!operation) return 'Operacao';
+
+    const eventName = String(operation.eventName || '').trim();
+    const market = String(operation.market || '').trim();
+    const description = String(operation.description || '').trim();
+
+    if (eventName || market) {
+        return [eventName, market].filter(Boolean).join(' - ');
+    }
+
+    return description || 'Operacao';
+}
+
+function deriveOperationResultPct(operation) {
+    if (!operation) return 0;
+
+    if (!isCollectiveOperationRecord(operation)) {
+        if (operation.result !== undefined && operation.result !== null) {
+            return toOperationNumber(operation.result, 0);
+        }
+        return toOperationNumber(operation.resultPct, 0);
+    }
+
+    const outcome = normalizeOperationOutcome(operation.outcome);
+    const stakePct = toOperationNumber(operation.stakePct, 0);
+    const odds = toOperationNumber(operation.odds, 0);
+
+    if (outcome === 'WON') {
+        return stakePct * (odds - 1);
+    }
+
+    if (outcome === 'LOST') {
+        return -stakePct;
+    }
+
+    if (outcome === 'VOID' || outcome === 'OPEN') {
+        return 0;
+    }
+
+    if (operation.result !== undefined && operation.result !== null) {
+        return toOperationNumber(operation.result, 0);
+    }
+
+    return toOperationNumber(operation.resultPct, 0);
+}
+
+function calculateOperationImpact(operation) {
+    if (!operation) return 0;
+
+    if (operation.pnlAmount !== undefined && operation.pnlAmount !== null && operation.pnlAmount !== '') {
+        return toOperationNumber(operation.pnlAmount, 0);
+    }
+
+    const totalCapital = toOperationNumber(operation.totalCapital, 0);
+    return (deriveOperationResultPct(operation) / 100) * totalCapital;
+}
+
+function getOperationStatusLabel(operation) {
+    const outcome = normalizeOperationOutcome(operation && operation.outcome);
+
+    if (outcome === 'OPEN') return 'ABERTA';
+    if (outcome === 'WON') return 'WIN';
+    if (outcome === 'LOST') return 'LOSS';
+    if (outcome === 'VOID') return 'VOID';
+    return 'SETTLED';
+}
+
+function getOperationStatusClass(operation) {
+    const outcome = normalizeOperationOutcome(operation && operation.outcome);
+
+    if (outcome === 'WON') return 'win';
+    if (outcome === 'LOST') return 'loss';
+    if (outcome === 'VOID') return 'void';
+    if (outcome === 'OPEN') return 'open';
+    return deriveOperationResultPct(operation) >= 0 ? 'win' : 'loss';
+}
+
 // ==================== HASH DE SENHAS ====================
 async function hashPassword(password) {
     // Simulação de hash (em produção usar bcrypt no backend)
@@ -272,7 +377,7 @@ function restoreBackup(file) {
 // ==================== UTILITÁRIOS DE DADOS ====================
 function calculateMonthlyReturn(operations, month) {
     const monthOps = operations.filter(op => op.date.startsWith(month));
-    return monthOps.reduce((sum, op) => sum + op.result, 0);
+    return monthOps.reduce((sum, op) => sum + deriveOperationResultPct(op), 0);
 }
 
 function getClientPerformance(clientId, days = 30) {
@@ -291,7 +396,8 @@ function getClientPerformance(clientId, days = 30) {
         })
         .map(op => ({
             ...op,
-            clientImpact: (op.result / 100) * (op.totalCapital * clientProportion)
+            result: deriveOperationResultPct(op),
+            clientImpact: calculateOperationImpact(op) * clientProportion
         }));
 
     return {
@@ -403,43 +509,89 @@ function convertToCSV(data) {
     return [csvHeaders, ...csvRows].join('\n');
 }
 
-// ==================== RECÁLCULO DE SALDOS ====================
+// ==================== RECALCULO DE SALDOS ====================
 function recalculateBalancesAndTotals() {
     if (!systemData || !Array.isArray(systemData.clients) || !Array.isArray(systemData.operations)) {
         return;
     }
 
-    // Reseta saldos para o aporte inicial
     systemData.clients.forEach(client => {
+        client.initialInvestment = toOperationNumber(client.initialInvestment, 0);
         client.currentBalance = client.initialInvestment;
     });
 
-    // Ordena operações em ordem cronológica ascendente
     const ops = systemData.operations
         .slice()
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Reaplica cada operação e atualiza totalCapital da operação
     ops.forEach(op => {
-        // Soma do capital elegível (clientes que já tinham entrado)
-        const eligibleClients = systemData.clients.filter(c => !c.startDate || new Date(op.date) >= new Date(c.startDate));
-        const portfolioBefore = eligibleClients.reduce((sum, c) => sum + c.currentBalance, 0);
+        const eligibleClients = systemData.clients.filter(client => {
+            return !client.startDate || new Date(op.date) >= new Date(client.startDate);
+        });
+        const portfolioBefore = eligibleClients.reduce((sum, client) => {
+            return sum + toOperationNumber(client.currentBalance, 0);
+        }, 0);
 
-        // Só sobrescreve totalCapital se houver clientes elegíveis; caso contrário, preserva o valor vindo do arquivo
         if (eligibleClients.length > 0) {
             op.totalCapital = portfolioBefore;
         }
 
-        // Aplica impacto proporcional em cada cliente elegível
+        op.description = getOperationDisplayDescription(op);
+        op.result = deriveOperationResultPct(op);
+
+        if (isCollectiveOperationRecord(op)) {
+            const outcome = normalizeOperationOutcome(op.outcome) || "OPEN";
+            const stakePct = toOperationNumber(op.stakePct, 0);
+            const odds = toOperationNumber(op.odds, 0);
+
+            op.outcome = outcome;
+            op.totalStakeAmount = (stakePct / 100) * portfolioBefore;
+            op.pnlAmount = calculateOperationImpact({
+                ...op,
+                pnlAmount: null,
+                totalCapital: portfolioBefore,
+            });
+
+            if (!isOperationSettled(op)) {
+                op.pnlAmount = 0;
+                return;
+            }
+
+            eligibleClients.forEach(client => {
+                const currentBalance = toOperationNumber(client.currentBalance, 0);
+                const stakeAmount = currentBalance * (stakePct / 100);
+                let impact = 0;
+
+                if (outcome === "WON") {
+                    impact = stakeAmount * (odds - 1);
+                } else if (outcome === "LOST") {
+                    impact = -stakeAmount;
+                }
+
+                client.currentBalance = currentBalance + impact;
+                if (client.currentBalance < 0) client.currentBalance = 0;
+            });
+
+            return;
+        }
+
+        op.totalStakeAmount = null;
+        op.pnlAmount = calculateOperationImpact({
+            ...op,
+            pnlAmount: null,
+            totalCapital: portfolioBefore,
+        });
+
         eligibleClients.forEach(client => {
-            const impact = (op.result / 100) * client.currentBalance;
-            client.currentBalance += impact;
+            const currentBalance = toOperationNumber(client.currentBalance, 0);
+            const impact = (op.result / 100) * currentBalance;
+            client.currentBalance = currentBalance + impact;
             if (client.currentBalance < 0) client.currentBalance = 0;
         });
     });
 }
 
-// ==================== INICIALIZAÇÃO ====================
+// ==================== INICIALIZACAO ====================
 function initializeUtils() {
     // Adiciona listeners globais
     document.addEventListener('keydown', function(e) {

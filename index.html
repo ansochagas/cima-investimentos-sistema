@@ -7,6 +7,7 @@
   <title>CIMA Investimentos - Sistema de Gestão</title>
   <link rel="stylesheet" href="./css/styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -109,28 +110,62 @@
             <div class="card-icon">
               <i class="fas fa-plus-circle"></i>
             </div>
-            Nova Operação
+            Nova Entrada Coletiva
           </h3>
-          <div class="input-group">
-            <label>
-              <i class="fas fa-calendar"></i> Data da Operação
-            </label>
-            <input type="date" id="operationDate">
+          <div class="operation-form-intro">
+            Cadastre a aposta da carteira e deixe o sistema calcular o impacto proporcional por cliente.
+          </div>
+          <div class="operation-form-grid">
+            <div class="input-group">
+              <label>
+                <i class="fas fa-calendar"></i> Data da Entrada
+              </label>
+              <input type="date" id="operationDate">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-futbol"></i> Evento / Jogo
+              </label>
+              <input type="text" id="operationEvent" placeholder="Ex: Palmeiras x Corinthians">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-crosshairs"></i> Mercado / Aposta
+              </label>
+              <input type="text" id="operationMarket" placeholder="Ex: Vitoria Palmeiras">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-chart-line"></i> Odd
+              </label>
+              <input type="number" step="0.01" id="operationOdds" placeholder="Ex: 1.90">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-percent"></i> Stake da Banca
+              </label>
+              <input type="number" step="0.01" id="operationStakePct" placeholder="Ex: 2.00">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-flag-checkered"></i> Status Inicial
+              </label>
+              <select id="operationOutcome">
+                <option value="OPEN">Aberta</option>
+                <option value="WON">WIN</option>
+                <option value="LOST">LOSS</option>
+                <option value="VOID">VOID</option>
+              </select>
+            </div>
           </div>
           <div class="input-group">
             <label>
-              <i class="fas fa-percentage"></i> Resultado (%)
+              <i class="fas fa-sticky-note"></i> Observacoes
             </label>
-            <input type="number" step="0.01" id="operationResult" placeholder="Ex: 2.5 para +2.5% ou -1.2 para -1.2%">
-          </div>
-          <div class="input-group">
-            <label>
-              <i class="fas fa-file-alt"></i> Descrição da Operação
-            </label>
-            <input type="text" id="operationDesc" placeholder="Ex: Liverpool vs Arsenal - Under 2.5 Gols">
+            <input type="text" id="operationNotes" placeholder="Opcional: casa, leitura do jogo, contexto da entrada">
           </div>
           <button class="btn btn-success" onclick="addOperation()">
-            <i class="fas fa-save"></i> Registrar Operação
+            <i class="fas fa-save"></i> Registrar Entrada
           </button>
         </div>
 
@@ -183,28 +218,62 @@
             <div class="card-icon">
               <i class="fas fa-plus-circle"></i>
             </div>
-            Registrar Nova Operação
+            Registrar Nova Entrada
           </h3>
-          <div class="input-group">
-            <label>
-              <i class="fas fa-calendar"></i> Data da Operação
-            </label>
-            <input type="date" id="operationDateOps">
+          <div class="operation-form-intro">
+            Registre a entrada e liquide depois no historico quando o jogo for encerrado.
+          </div>
+          <div class="operation-form-grid">
+            <div class="input-group">
+              <label>
+                <i class="fas fa-calendar"></i> Data da Entrada
+              </label>
+              <input type="date" id="operationDateOps">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-futbol"></i> Evento / Jogo
+              </label>
+              <input type="text" id="operationEventOps" placeholder="Ex: Flamengo x Gremio">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-crosshairs"></i> Mercado / Aposta
+              </label>
+              <input type="text" id="operationMarketOps" placeholder="Ex: Ambas marcam">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-chart-line"></i> Odd
+              </label>
+              <input type="number" step="0.01" id="operationOddsOps" placeholder="Ex: 1.82">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-percent"></i> Stake da Banca
+              </label>
+              <input type="number" step="0.01" id="operationStakePctOps" placeholder="Ex: 1.50">
+            </div>
+            <div class="input-group">
+              <label>
+                <i class="fas fa-flag-checkered"></i> Status Inicial
+              </label>
+              <select id="operationOutcomeOps">
+                <option value="OPEN">Aberta</option>
+                <option value="WON">WIN</option>
+                <option value="LOST">LOSS</option>
+                <option value="VOID">VOID</option>
+              </select>
+            </div>
           </div>
           <div class="input-group">
             <label>
-              <i class="fas fa-percentage"></i> Resultado (%)
+              <i class="fas fa-sticky-note"></i> Observacoes
             </label>
-            <input type="number" step="0.01" id="operationResultOps" placeholder="Ex: 2.5 para +2.5% ou -1.2 para -1.2%">
-          </div>
-          <div class="input-group">
-            <label>
-              <i class="fas fa-file-alt"></i> Descrição da Operação
-            </label>
-            <input type="text" id="operationDescOps" placeholder="Ex: Palmeiras x Flamengo - Over 1.5">
+            <input type="text" id="operationNotesOps" placeholder="Opcional: detalhes adicionais da aposta">
           </div>
           <button class="btn btn-success" onclick="addOperationFromOpsTab()">
-            <i class="fas fa-save"></i> Registrar Operação
+            <i class="fas fa-save"></i> Registrar Entrada
           </button>
         </div>
 
@@ -219,10 +288,12 @@
             <thead>
               <tr>
                 <th><i class="fas fa-calendar"></i> Data</th>
-                <th><i class="fas fa-file-alt"></i> Descrição</th>
-                <th><i class="fas fa-percentage"></i> Resultado (%)</th>
-                <th><i class="fas fa-money-bill-wave"></i> Valor Impactado</th>
-                <th><i class="fas fa-tools"></i> Ações</th>
+                <th><i class="fas fa-file-alt"></i> Evento / Mercado</th>
+                <th><i class="fas fa-percent"></i> Stake</th>
+                <th><i class="fas fa-chart-line"></i> Odd</th>
+                <th><i class="fas fa-flag"></i> Status</th>
+                <th><i class="fas fa-money-bill-wave"></i> Impacto</th>
+                <th><i class="fas fa-tools"></i> Acoes</th>
               </tr>
             </thead>
             <tbody id="operationsTableBody">
@@ -492,53 +563,100 @@
 
     <!-- Client Dashboard -->
     <div id="clientDashboard" class="client-panel">
-      <div class="user-info">
-        <div>
+      <div class="user-info client-header-panel">
+        <div class="client-header-main">
           <div class="user-name" id="clientName">
             <i class="fas fa-user-tie"></i> Cliente
           </div>
           <div class="user-role">Portal do Investidor</div>
+          <div class="client-meta-row">
+            <span class="client-meta-pill">
+              <i class="fas fa-file-signature"></i>
+              Contrato desde <strong id="clientContractStart">--/--/----</strong>
+            </span>
+            <span class="client-meta-pill">
+              <i class="fas fa-clock"></i>
+              Atualizado em <strong id="clientLastUpdate">--:--</strong>
+            </span>
+          </div>
         </div>
-        <button class="btn btn-danger" onclick="logout()">
-          <i class="fas fa-sign-out-alt"></i> Sair
-        </button>
+        <div class="client-header-actions">
+          <button class="btn btn-success" onclick="generateClientReport(systemData.currentUser.id)">
+            <i class="fas fa-file-pdf"></i> Meu Relatório PDF
+          </button>
+          <button class="btn btn-gold" onclick="window.print()">
+            <i class="fas fa-print"></i> Imprimir
+          </button>
+          <button class="btn btn-danger" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Sair
+          </button>
+        </div>
       </div>
 
-      <div class="dashboard">
-        <div class="card">
-          <h3>
-            <div class="card-icon">
-              <i class="fas fa-chart-pie"></i>
-            </div>
-            Meu Portfolio
-          </h3>
-          <div class="metric">
-            <span class="metric-label">
+      <div class="client-content">
+        <div class="client-kpi-grid">
+          <div class="client-kpi-card">
+            <div class="client-kpi-label">
               <i class="fas fa-hand-holding-usd"></i> Aporte Inicial
-            </span>
-            <span class="metric-value" id="clientInitialInvestment">R$ 0,00</span>
+            </div>
+            <div class="client-kpi-value" id="clientInitialInvestment">R$ 0,00</div>
           </div>
-          <div class="metric">
-            <span class="metric-label">
+          <div class="client-kpi-card">
+            <div class="client-kpi-label">
               <i class="fas fa-piggy-bank"></i> Saldo Atual
-            </span>
-            <span class="metric-value" id="clientCurrentBalance">R$ 0,00</span>
+            </div>
+            <div class="client-kpi-value" id="clientCurrentBalance">R$ 0,00</div>
           </div>
-          <div class="metric">
-            <span class="metric-label">
-              <i class="fas fa-trophy"></i> Lucro Total
-            </span>
-            <span class="metric-value positive" id="clientTotalProfit">R$ 0,00</span>
+          <div class="client-kpi-card">
+            <div class="client-kpi-label">
+              <i class="fas fa-trophy"></i> Lucro Líquido
+            </div>
+            <div class="client-kpi-value" id="clientTotalProfit">R$ 0,00</div>
           </div>
-          <div class="metric">
-            <span class="metric-label">
+          <div class="client-kpi-card">
+            <div class="client-kpi-label">
               <i class="fas fa-percent"></i> Rentabilidade
-            </span>
-            <span class="metric-value positive" id="clientProfitability">0%</span>
+            </div>
+            <div class="client-kpi-value" id="clientProfitability">0%</div>
           </div>
         </div>
 
-        <div class="card">
+        <div class="client-overview-grid">
+          <div class="card client-six-month-card">
+            <h3>
+              <div class="card-icon">
+                <i class="fas fa-chart-column"></i>
+              </div>
+              Resultado dos Últimos 6 Meses
+            </h3>
+            <div class="client-six-month-summary">
+              <div class="client-mini-metric">
+                <span>Resultado acumulado</span>
+                <strong id="clientSixMonthResult">+0,00%</strong>
+              </div>
+              <div class="client-mini-metric">
+                <span>Consistência</span>
+                <strong id="clientSixMonthConsistency">0 de 6 meses positivos</strong>
+              </div>
+            </div>
+            <div class="chart-container client-mini-chart">
+              <canvas id="clientSixMonthChart"></canvas>
+            </div>
+            <div class="client-month-list" id="clientSixMonthList"></div>
+          </div>
+
+          <div class="card client-entry-card">
+            <h3>
+              <div class="card-icon">
+                <i class="fas fa-list-check"></i>
+              </div>
+              Últimas 5 Entradas
+            </h3>
+            <div class="client-entry-list" id="clientRecentEntries"></div>
+          </div>
+        </div>
+
+        <div class="card client-evolution-card">
           <h3>
             <div class="card-icon">
               <i class="fas fa-chart-area"></i>
@@ -548,35 +666,6 @@
           <div class="chart-container">
             <canvas id="clientChart"></canvas>
           </div>
-        </div>
-
-        <div class="card">
-          <h3>
-            <div class="card-icon">
-              <i class="fas fa-list-alt"></i>
-            </div>
-            Últimas Operações
-          </h3>
-          <div style="margin-bottom: 15px;">
-            <button class="btn btn-success" onclick="generateClientReport(systemData.currentUser.id)" style="margin-right: 10px;">
-              <i class="fas fa-file-pdf"></i> Meu Relatório PDF
-            </button>
-            <button class="btn btn-gold" onclick="window.print()">
-              <i class="fas fa-print"></i> Imprimir Dashboard
-            </button>
-          </div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th><i class="fas fa-calendar"></i> Data</th>
-                <th><i class="fas fa-info-circle"></i> Descrição</th>
-                <th><i class="fas fa-chart-line"></i> Resultado</th>
-                <th><i class="fas fa-money-bill-alt"></i> Impacto no Saldo</th>
-              </tr>
-            </thead>
-            <tbody id="clientOperationsTable">
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
@@ -638,7 +727,11 @@
   <!-- JavaScript Files -->
   <script src="./js/data.js"></script>
   <script src="./js/auth.js"></script>
-  <script src="./js/admin.js"></script>
+  <script src="./js/admin-core.js"></script>
+  <script src="./js/admin-operations.js"></script>
+  <script src="./js/admin-clients.js"></script>
+  <script src="./js/admin-reports.js"></script>
+  <script src="./js/admin-audit.js"></script>
   <script src="./js/client.js"></script>
   <script src="./js/utils.js"></script>
   <script src="./js/pdf-reports.js"></script>

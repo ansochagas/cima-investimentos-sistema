@@ -18,25 +18,54 @@ model User {
 }
 
 model Client {
-  id               Int       @id @default(autoincrement())
-  userId           Int       @unique
-  name             String
-  startDate        DateTime
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique
+  name              String
+  startDate         DateTime
   initialInvestment Decimal  @db.Decimal(18,2)
   currentBalance    Decimal  @db.Decimal(18,2)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  user             User      @relation(fields: [userId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id])
+  allocations       OperationAllocation[]
 }
 
 model Operation {
-  id           Int      @id @default(autoincrement())
-  date         DateTime
-  description  String
-  resultPct    Decimal  @db.Decimal(9,4)
-  totalCapital Decimal? @db.Decimal(18,2)
-  createdAt    DateTime @default(now())
+  id               Int               @id @default(autoincrement())
+  date             DateTime
+  description      String
+  eventName        String?
+  market           String?
+  odds             Decimal?          @db.Decimal(9,4)
+  stakePct         Decimal?          @db.Decimal(9,4)
+  resultPct        Decimal           @db.Decimal(9,4)
+  outcome          OperationOutcome?
+  settledAt        DateTime?
+  notes            String?
+  totalCapital     Decimal?          @db.Decimal(18,2)
+  totalStakeAmount Decimal?          @db.Decimal(18,2)
+  pnlAmount        Decimal?          @db.Decimal(18,2)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  allocations      OperationAllocation[]
   @@unique([date, description])
+}
+
+model OperationAllocation {
+  id            Int      @id @default(autoincrement())
+  operationId   Int
+  clientId      Int
+  balanceBefore Decimal  @db.Decimal(18,2)
+  stakeAmount   Decimal  @db.Decimal(18,2)
+  pnlAmount     Decimal  @db.Decimal(18,2)
+  balanceAfter  Decimal  @db.Decimal(18,2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  operation     Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, clientId])
+  @@index([clientId, operationId])
 }
 
 model AuditLog {
@@ -50,5 +79,12 @@ model AuditLog {
 enum Role {
   ADMIN
   CLIENT
+}
+
+enum OperationOutcome {
+  OPEN
+  WON
+  LOST
+  VOID
 }
 

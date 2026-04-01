@@ -10,6 +10,11 @@ function showAlert(message, type) {
   }
 }
 
+function allowLocalAuthFallback() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("demo") === "1";
+}
+
 // Authentication Functions
 async function login() {
   const username = document.getElementById("username").value.trim();
@@ -24,95 +29,95 @@ async function login() {
   console.log("Tentativa de login:", username);
 
   try {
-    // Tentativa via API (migração gradual)
-    const looksLikeEmail = username.includes("@");
+    const loginIdentifier =
+      username.toLowerCase() === "admin" ? "admin@cimainvest.com" : username;
+    const looksLikeEmail = loginIdentifier.includes("@");
+
     if (looksLikeEmail && window.CIMA_API) {
       try {
-        const user = await window.CIMA_API.login(username, password);
+        const user = await window.CIMA_API.login(loginIdentifier, password);
         const role = (user.role || "").toLowerCase();
+
         if (role === "admin") {
           systemData.currentUser = "admin";
           systemData.userType = "admin";
-          localStorage.setItem(
-            "cimaActiveSession",
-            JSON.stringify({ role: "admin", email: user.email })
-          );
+          if (typeof saveActiveSession === "function") saveActiveSession();
           showAdminDashboard();
           showAlert("Login administrativo realizado com sucesso!", "success");
           console.log("ADMIN_LOGIN_SUCCESS_API");
           saveData();
           return;
-        } else if (role === "client") {
-          console.log("CLIENT_LOGIN_API_SUCCESS");
-          try {
-            const me = await window.CIMA_API.getMe();
-            const normalize = (v) =>
-              typeof v === "string" ? parseFloat(v) : v;
-            const meNorm = {
-              ...me,
-              initialInvestment: normalize(me.initialInvestment),
-              currentBalance: normalize(me.currentBalance),
-            };
-            systemData.currentUser = meNorm;
-            systemData.userType = "client";
-            showClientDashboard(meNorm);
-            showAlert("Bem-vindo, " + meNorm.name + "!", "success");
-            saveData();
-            return;
-          } catch (e2) {
-            console.warn(
-              "Falha ao carregar perfil do cliente via API, tentando fallback local.",
-              e2
-            );
-            // Continua para tentar login local
-          }
         }
-      } catch (e) {
-        console.warn(
-          "Falha no login via API, tentando fallback local:",
-          e.message
-        );
-        // Continua para tentar login local
+
+        if (role === "client") {
+          console.log("CLIENT_LOGIN_API_SUCCESS");
+          const me = await window.CIMA_API.getMe();
+          const normalize = (value) =>
+            typeof value === "string" ? parseFloat(value) : value;
+          const meNorm = {
+            ...me,
+            initialInvestment: normalize(me.initialInvestment),
+            currentBalance: normalize(me.currentBalance),
+          };
+
+          systemData.currentUser = meNorm;
+          systemData.userType = "client";
+          if (typeof saveActiveSession === "function") saveActiveSession();
+          showClientDashboard(meNorm);
+          showAlert("Bem-vindo, " + meNorm.name + "!", "success");
+          saveData();
+          return;
+        }
+      } catch (error) {
+        console.warn("Falha no login via API:", error.message);
+        if (!allowLocalAuthFallback()) {
+          showAlert("Email ou senha incorretos!", "danger");
+          console.log("LOGIN_FAILED_API_ONLY:", loginIdentifier);
+          return;
+        }
       }
     }
-    // Admin login - aceita senhas antigas temporariamente
+
+    if (!allowLocalAuthFallback()) {
+      showAlert("Login local desabilitado fora do modo demo.", "danger");
+      console.log("LOGIN_BLOCKED_LOCAL_FALLBACK_DISABLED");
+      return;
+    }
+
     if (username === "admin") {
       if (password === "admin123" || password === "CimaInvest2024!") {
         systemData.currentUser = "admin";
         systemData.userType = "admin";
+        if (typeof saveActiveSession === "function") saveActiveSession();
         showAdminDashboard();
         showAlert("Login administrativo realizado com sucesso!", "success");
         console.log("ADMIN_LOGIN_SUCCESS");
         saveData();
         return;
-      } else {
-        showAlert("Credenciais administrativas incorretas!", "danger");
-        console.log("ADMIN_LOGIN_FAILED");
-        return;
-      }
-    } else {
-      // Client login - busca por email
-      const client = systemData.clients.find((c) => c.email === username);
-
-      if (client) {
-        // Para clientes existentes, aceita senhas simples temporariamente
-        if (client.password === password || password === "123456") {
-          systemData.currentUser = client;
-          systemData.userType = "client";
-          showClientDashboard(client);
-          showAlert(`Bem-vindo, ${client.name}!`, "success");
-          console.log("CLIENT_LOGIN_SUCCESS:", client.name);
-          saveData();
-          return;
-        }
       }
 
-      showAlert("Email ou senha incorretos!", "danger");
-      console.log("CLIENT_LOGIN_FAILED:", username);
+      showAlert("Credenciais administrativas incorretas!", "danger");
+      console.log("ADMIN_LOGIN_FAILED");
+      return;
     }
+
+    const client = systemData.clients.find((c) => c.email === username);
+    if (client && (client.password === password || password === "123456")) {
+      systemData.currentUser = client;
+      systemData.userType = "client";
+      if (typeof saveActiveSession === "function") saveActiveSession();
+      showClientDashboard(client);
+      showAlert(`Bem-vindo, ${client.name}!`, "success");
+      console.log("CLIENT_LOGIN_SUCCESS:", client.name);
+      saveData();
+      return;
+    }
+
+    showAlert("Email ou senha incorretos!", "danger");
+    console.log("CLIENT_LOGIN_FAILED:", username);
   } catch (error) {
     console.error("Erro no login:", error);
-    showAlert("Erro no sistema de autenticação. Tente novamente.", "danger");
+    showAlert("Erro no sistema de autenticacao. Tente novamente.", "danger");
   }
 }
 
@@ -123,9 +128,19 @@ function logout() {
   systemData.currentUser = null;
   systemData.userType = null;
 
-  // Remove sessão ativa
+  // Remove sessão ativa e tokens
   localStorage.removeItem("cimaActiveSession");
   localStorage.removeItem("cimaAccessToken");
+  localStorage.removeItem("cimaRefreshToken");
+
+  // Tenta logout na API se estiver logado
+  if (window.CIMA_API) {
+    try {
+      window.CIMA_API.logout && window.CIMA_API.logout();
+    } catch (e) {
+      console.warn("Erro no logout da API:", e);
+    }
+  }
 
   document.getElementById("loginScreen").style.display = "block";
   document.getElementById("adminDashboard").style.display = "none";
