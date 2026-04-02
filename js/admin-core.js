@@ -61,9 +61,9 @@ function updateAdminOverview() {
   document.getElementById("totalClients").textContent =
     (systemData.clients || []).length;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = toLocalDateInputValue();
   const todayProfit = (systemData.operations || [])
-    .filter((operation) => operation.date && String(operation.date).slice(0, 10) === today)
+    .filter((operation) => operation.date && toLocalDateInputValue(operation.date) === today)
     .reduce((sum, operation) => sum + calculateOperationImpact(operation), 0);
 
   document.getElementById("todayProfit").textContent =
@@ -75,11 +75,11 @@ function updateAdminOverview() {
   const monthProfit = (systemData.operations || [])
     .filter((operation) => {
       if (!operation.date) return false;
-      const operationDate = new Date(operation.date);
-      return (
-        operationDate.getMonth() === month &&
-        operationDate.getFullYear() === year
-      );
+      const operationDate = parseDatePreservingCalendar(operation.date);
+      return operationDate
+        ? operationDate.getMonth() === month &&
+            operationDate.getFullYear() === year
+        : false;
     })
     .reduce((sum, operation) => sum + calculateOperationImpact(operation), 0);
 
@@ -263,10 +263,8 @@ function calculateMonthlyPerformance(operations) {
   const monthlyMap = new Map();
 
   operations.forEach((operation) => {
-    const date = new Date(operation.date);
-    const monthKey = `${date.getFullYear()}-${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}`;
+    const monthKey = getCalendarMonthKey(operation.date);
+    if (!monthKey) return;
 
     if (!monthlyMap.has(monthKey)) {
       monthlyMap.set(monthKey, { total: 0, count: 0 });
@@ -282,10 +280,8 @@ function calculateMonthlyPerformance(operations) {
   let currentAverage = 0;
 
   operations.forEach((operation) => {
-    const date = new Date(operation.date);
-    const monthKey = `${date.getFullYear()}-${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}`;
+    const monthKey = getCalendarMonthKey(operation.date);
+    if (!monthKey) return;
 
     if (currentMonth !== monthKey) {
       currentMonth = monthKey;

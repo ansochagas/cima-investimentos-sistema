@@ -25,7 +25,7 @@ async function initializeSystem() {
     if (typeof prefillOperationForms === "function") {
       prefillOperationForms();
     } else {
-      const today = new Date().toISOString().split("T")[0];
+      const today = toLocalDateInputValue();
       const operationDateInput = document.getElementById("operationDate");
       if (operationDateInput) {
         operationDateInput.value = today;

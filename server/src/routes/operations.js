@@ -27,11 +27,70 @@ function parseDateValue(value, fieldName) {
     throw new Error(`Campo obrigatorio ausente: ${fieldName}`);
   }
 
-  const date = value instanceof Date ? value : new Date(value);
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new Error(`Data invalida para ${fieldName}`);
+    }
+    return value;
+  }
+
+  const rawValue = String(value).trim();
+  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  const date = dateOnlyMatch
+    ? new Date(
+        Date.UTC(
+          Number(dateOnlyMatch[1]),
+          Number(dateOnlyMatch[2]) - 1,
+          Number(dateOnlyMatch[3]),
+          12,
+          0,
+          0,
+          0
+        )
+      )
+    : new Date(rawValue);
+
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Data invalida para ${fieldName}`);
   }
   return date;
+}
+
+function parseDateRangeValue(value, boundary) {
+  if (!value) return null;
+
+  const rawValue = String(value).trim();
+  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (dateOnlyMatch) {
+    return boundary === "end"
+      ? new Date(
+          Date.UTC(
+            Number(dateOnlyMatch[1]),
+            Number(dateOnlyMatch[2]) - 1,
+            Number(dateOnlyMatch[3]),
+            23,
+            59,
+            59,
+            999
+          )
+        )
+      : new Date(
+          Date.UTC(
+            Number(dateOnlyMatch[1]),
+            Number(dateOnlyMatch[2]) - 1,
+            Number(dateOnlyMatch[3]),
+            0,
+            0,
+            0,
+            0
+          )
+        );
+  }
+
+  const date = new Date(rawValue);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function normalizeOutcome(outcome) {
@@ -157,8 +216,8 @@ router.get("/", requireAuth("ADMIN"), async (req, res) => {
 
   try {
     const { operationSnapshots } = await computeBalances(prisma);
-    const fromDate = from ? new Date(String(from)) : null;
-    const toDate = to ? new Date(String(to)) : null;
+    const fromDate = parseDateRangeValue(from, "start");
+    const toDate = parseDateRangeValue(to, "end");
 
     const filtered = operationSnapshots.filter((snapshot) => {
       const snapshotDate = new Date(snapshot.date);

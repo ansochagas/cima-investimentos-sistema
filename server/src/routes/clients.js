@@ -11,6 +11,30 @@ import {
 export const router = Router();
 const prisma = new PrismaClient();
 
+function parseCalendarDateValue(value, fallback = new Date()) {
+  if (!value) return fallback;
+  if (value instanceof Date) return value;
+
+  const rawValue = String(value).trim();
+  const dateOnlyMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  const date = dateOnlyMatch
+    ? new Date(
+        Date.UTC(
+          Number(dateOnlyMatch[1]),
+          Number(dateOnlyMatch[2]) - 1,
+          Number(dateOnlyMatch[3]),
+          12,
+          0,
+          0,
+          0
+        )
+      )
+    : new Date(rawValue);
+
+  return Number.isNaN(date.getTime()) ? fallback : date;
+}
+
 function getComputedBalance(balanceMap, client) {
   return balanceMap.get(client.id) || new Prisma.Decimal(client.initialInvestment);
 }
@@ -88,7 +112,7 @@ router.post("/", requireAuth("ADMIN"), async (req, res) => {
       data: {
         userId: user.id,
         name,
-        startDate: startDate ? new Date(startDate) : new Date(),
+        startDate: parseCalendarDateValue(startDate),
         initialInvestment: new Prisma.Decimal(initialInvestment),
         currentBalance: new Prisma.Decimal(initialInvestment),
       },

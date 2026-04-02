@@ -9,8 +9,47 @@ function formatCurrency(value) {
     }).format(value);
 }
 
+function parseDatePreservingCalendar(dateLike) {
+    if (!dateLike) return null;
+
+    if (dateLike instanceof Date) {
+        return new Date(dateLike.getTime());
+    }
+
+    const rawValue = String(dateLike).trim();
+    const calendarMatch = rawValue.match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z)?$/
+    );
+
+    if (calendarMatch) {
+        const [, year, month, day] = calendarMatch;
+        return new Date(
+            Number(year),
+            Number(month) - 1,
+            Number(day),
+            12,
+            0,
+            0,
+            0
+        );
+    }
+
+    const parsedDate = new Date(rawValue);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function toLocalDateInputValue(dateLike = new Date()) {
+    const date = parseDatePreservingCalendar(dateLike);
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function formatDate(dateString) {
-    const date = new Date(dateString);
+    const date = parseDatePreservingCalendar(dateString);
+    if (!date) return '--/--/----';
     return date.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -19,7 +58,8 @@ function formatDate(dateString) {
 }
 
 function formatDateTime(dateString) {
-    const date = new Date(dateString);
+    const date = parseDatePreservingCalendar(dateString);
+    if (!date) return '--/--/---- --:--';
     return date.toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -27,6 +67,18 @@ function formatDateTime(dateString) {
         hour: '2-digit',
         minute: '2-digit'
     });
+}
+
+function getDateTimestamp(dateLike) {
+    const date = parseDatePreservingCalendar(dateLike);
+    return date ? date.getTime() : NaN;
+}
+
+function getCalendarMonthKey(dateLike) {
+    const date = parseDatePreservingCalendar(dateLike);
+    if (!date) return null;
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${date.getFullYear()}-${month}`;
 }
 
 function formatPercentage(value, decimals = 2) {
@@ -389,10 +441,10 @@ function getClientPerformance(clientId, days = 30) {
 
     const recentOps = systemData.operations
         .filter(op => {
-            const opDate = new Date(op.date);
+            const opDate = parseDatePreservingCalendar(op.date);
             const limitDate = new Date();
             limitDate.setDate(limitDate.getDate() - days);
-            return opDate >= limitDate;
+            return opDate && opDate >= limitDate;
         })
         .map(op => ({
             ...op,
@@ -522,11 +574,12 @@ function recalculateBalancesAndTotals() {
 
     const ops = systemData.operations
         .slice()
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
+        .sort((a, b) => getDateTimestamp(a.date) - getDateTimestamp(b.date));
 
     ops.forEach(op => {
         const eligibleClients = systemData.clients.filter(client => {
-            return !client.startDate || new Date(op.date) >= new Date(client.startDate);
+            if (!client.startDate) return true;
+            return getDateTimestamp(op.date) >= getDateTimestamp(client.startDate);
         });
         const portfolioBefore = eligibleClients.reduce((sum, client) => {
             return sum + toOperationNumber(client.currentBalance, 0);

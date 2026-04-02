@@ -111,14 +111,16 @@ function buildLocalClientOperations(client) {
 
   const operationTimeline = systemData.operations
     .slice()
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .sort((a, b) => getDateTimestamp(a.date) - getDateTimestamp(b.date));
 
   let runningBalance = toNumber(client.initialInvestment, 0);
 
   return operationTimeline
     .map((operation) => {
-      const operationDate = new Date(operation.date);
-      const clientStartDate = client.startDate ? new Date(client.startDate) : null;
+      const operationDate = parseDatePreservingCalendar(operation.date);
+      const clientStartDate = client.startDate
+        ? parseDatePreservingCalendar(client.startDate)
+        : null;
       if (clientStartDate && clientStartDate > operationDate) {
         return null;
       }
@@ -156,7 +158,7 @@ function buildLocalClientOperations(client) {
     })
     .filter(Boolean)
     .filter((operation) => isValidDate(operation.date))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .sort((a, b) => getDateTimestamp(a.date) - getDateTimestamp(b.date));
 }
 
 function normalizeApiOperations(rawOperations) {
@@ -171,7 +173,7 @@ function normalizeApiOperations(rawOperations) {
       outcome: normalizeOperationOutcome(operation.outcome),
     }))
     .filter((operation) => isValidDate(operation.date))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .sort((a, b) => getDateTimestamp(a.date) - getDateTimestamp(b.date));
 }
 
 function updateClientRecentEntries(operations) {
@@ -180,7 +182,7 @@ function updateClientRecentEntries(operations) {
 
   const recentOperations = (operations || [])
     .slice()
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .sort((a, b) => getDateTimestamp(b.date) - getDateTimestamp(a.date))
     .slice(0, 5);
 
   if (!recentOperations.length) {
@@ -294,7 +296,8 @@ function buildSixMonthSeries(operations) {
 
   operations.forEach((operation) => {
     if (!isValidDate(operation.date)) return;
-    const date = new Date(operation.date);
+    const date = parseDatePreservingCalendar(operation.date);
+    if (!date) return;
     const key = getMonthKey(date);
     const slot = monthIndex.get(key);
     if (!slot) return;
@@ -388,7 +391,7 @@ function createClientChart(client, operationsInput = null) {
     ? operationsInput
     : buildLocalClientOperations(client))
     .slice()
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .sort((a, b) => getDateTimestamp(a.date) - getDateTimestamp(b.date))
     .slice(-12);
 
   const balanceProgression = [];
@@ -558,15 +561,14 @@ function formatDateSafe(dateLike) {
 }
 
 function getMonthKey(dateLike) {
-  const date = new Date(dateLike);
+  const date = parseDatePreservingCalendar(dateLike);
+  if (!date) return "";
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${date.getFullYear()}-${month}`;
 }
 
 function isValidDate(dateLike) {
-  if (!dateLike) return false;
-  const date = new Date(dateLike);
-  return !Number.isNaN(date.getTime());
+  return !!parseDatePreservingCalendar(dateLike);
 }
 
 function toNumber(value, fallback = 0) {

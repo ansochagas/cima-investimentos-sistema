@@ -87,7 +87,7 @@ async function addClient() {
         startDate:
           startDateInput && /^\d{4}-\d{2}-\d{2}$/.test(startDateInput)
             ? startDateInput
-            : new Date().toISOString().split("T")[0],
+            : toLocalDateInputValue(),
         initialInvestment: investment,
       };
 
@@ -148,7 +148,7 @@ async function addClient() {
         : 1;
 
     // Define startDate informado ou hoje
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = toLocalDateInputValue();
     let startDate =
       startDateInput && /^\d{4}-\d{2}-\d{2}$/.test(startDateInput)
         ? startDateInput

@@ -13,7 +13,7 @@ function getOperationFormIds(suffix = "") {
 }
 
 function prefillOperationForms() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = toLocalDateInputValue();
 
   ["", "Ops"].forEach((suffix) => {
     const ids = getOperationFormIds(suffix);
@@ -101,7 +101,7 @@ function clearOperationForm(suffix = "") {
   const notesInput = document.getElementById(ids.notes);
 
   if (dateInput) {
-    dateInput.value = new Date().toISOString().split("T")[0];
+    dateInput.value = toLocalDateInputValue();
   }
   if (eventNameInput) eventNameInput.value = "";
   if (marketInput) marketInput.value = "";
@@ -132,8 +132,8 @@ function readOperationForm(suffix = "") {
     return null;
   }
 
-  const operationDate = new Date(date);
-  if (Number.isNaN(operationDate.getTime())) {
+  const operationDate = parseDatePreservingCalendar(date);
+  if (!operationDate) {
     showAlert("Data da operacao invalida.", "danger");
     return null;
   }
@@ -490,7 +490,7 @@ function updateOperationsTable() {
       .then((operations) => {
         const normalized = (operations || [])
           .map((operation) => normalizeOperationForUi(operation))
-          .sort((a, b) => new Date(b.date) - new Date(a.date));
+          .sort((a, b) => getDateTimestamp(b.date) - getDateTimestamp(a.date));
 
         systemData.operations = normalized;
         saveData();
@@ -507,7 +507,7 @@ function updateOperationsTable() {
         renderOperationsTableRows(
           (systemData.operations || [])
             .map((operation) => normalizeOperationForUi(operation))
-            .sort((a, b) => new Date(b.date) - new Date(a.date)),
+            .sort((a, b) => getDateTimestamp(b.date) - getDateTimestamp(a.date)),
           false
         );
       });
@@ -517,7 +517,7 @@ function updateOperationsTable() {
   recalculateBalancesAndTotals();
   const normalized = (systemData.operations || [])
     .map((operation) => normalizeOperationForUi(operation))
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .sort((a, b) => getDateTimestamp(b.date) - getDateTimestamp(a.date));
 
   renderOperationsTableRows(normalized, false);
 }
