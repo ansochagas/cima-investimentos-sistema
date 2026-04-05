@@ -246,7 +246,7 @@ function buildOperationSubtitle(operation) {
   }
 
   if (operation.settledAt) {
-    bits.push(`Liquidada em ${formatDateTime(operation.settledAt)}`);
+    bits.push(`Liquidada em ${formatDate(operation.settledAt)}`);
   } else if (normalizeOperationOutcome(operation.outcome) === "OPEN") {
     bits.push("Aguardando liquidacao");
   }
