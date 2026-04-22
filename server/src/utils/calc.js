@@ -352,36 +352,42 @@ export async function rebuildPortfolioLedger(providedPrisma) {
       });
     });
 
-    await prisma.$transaction(async (tx) => {
-      await tx.operationAllocation.deleteMany({});
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.operationAllocation.deleteMany({});
 
-      for (const batch of chunk(allocationRows, 500)) {
-        if (!batch.length) continue;
-        await tx.operationAllocation.createMany({ data: batch });
-      }
+        for (const batch of chunk(allocationRows, 500)) {
+          if (!batch.length) continue;
+          await tx.operationAllocation.createMany({ data: batch });
+        }
 
-      for (const snapshot of operationSnapshots) {
-        await tx.operation.update({
-          where: { id: snapshot.id },
-          data: {
-            resultPct: snapshot.resultPct,
-            totalCapital: snapshot.totalCapital,
-            totalStakeAmount: snapshot.totalStakeAmount,
-            pnlAmount: snapshot.pnlAmount,
-          },
-        });
-      }
+        for (const snapshot of operationSnapshots) {
+          await tx.operation.update({
+            where: { id: snapshot.id },
+            data: {
+              resultPct: snapshot.resultPct,
+              totalCapital: snapshot.totalCapital,
+              totalStakeAmount: snapshot.totalStakeAmount,
+              pnlAmount: snapshot.pnlAmount,
+            },
+          });
+        }
 
-      for (const client of clients) {
-        await tx.client.update({
-          where: { id: client.id },
-          data: {
-            currentBalance:
-              balanceMap.get(client.id) || toDecimal(client.initialInvestment),
-          },
-        });
+        for (const client of clients) {
+          await tx.client.update({
+            where: { id: client.id },
+            data: {
+              currentBalance:
+                balanceMap.get(client.id) || toDecimal(client.initialInvestment),
+            },
+          });
+        }
+      },
+      {
+        maxWait: 20000,
+        timeout: 120000,
       }
-    });
+    );
 
     return {
       clients,
